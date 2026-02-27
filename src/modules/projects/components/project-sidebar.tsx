@@ -3,10 +3,11 @@
 import { createElement, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, Layers } from 'lucide-react';
+import { ArrowLeft, Plus, Layers, Settings, UserPlus } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarGroup,
   SidebarGroupLabel,
@@ -23,6 +24,7 @@ import { useSpaces } from '@/modules/spaces/hooks/use-spaces';
 import { getProjectIcon } from '@/modules/projects/components/icon-color-picker';
 import { useAccentColor } from '@/shared/providers/accent-color-provider';
 import { CreateSpaceDialog } from '@/modules/spaces/components/create-space-dialog';
+import { AddMemberDialog } from '@/modules/projects/components/add-member-dialog';
 
 export function ProjectSidebar() {
   const params = useParams<{ projectKey: string; spaceId?: string }>();
@@ -30,6 +32,7 @@ export function ProjectSidebar() {
   const router = useRouter();
   const { colors } = useAccentColor();
   const [createOpen, setCreateOpen] = useState(false);
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
 
   const { data, isLoading } = useProject(params.projectKey);
   const project = data?.data;
@@ -151,6 +154,34 @@ export function ProjectSidebar() {
             </SidebarMenu>
           </SidebarGroup>
         </SidebarContent>
+
+        <SidebarFooter className="gap-0 p-0">
+          <Separator />
+          <SidebarMenu className="p-2">
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                tooltip="Configuración del proyecto"
+                isActive={pathname.startsWith(`${basePath}/settings`)}
+              >
+                <Link href={`${basePath}/settings`}>
+                  <Settings className="size-4" />
+                  <span>Configuración</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => project && setAddMemberOpen(true)}
+                tooltip="Añadir persona al proyecto"
+                disabled={!project}
+              >
+                <UserPlus className="size-4" />
+                <span>Añadir persona</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
       </Sidebar>
 
       {project && (
@@ -158,6 +189,16 @@ export function ProjectSidebar() {
           projectId={project.id}
           open={createOpen}
           onOpenChange={setCreateOpen}
+        />
+      )}
+
+      {project && (
+        <AddMemberDialog
+          projectId={project.id}
+          projectName={project.name}
+          orgId={project.organizationId}
+          open={addMemberOpen}
+          onOpenChange={setAddMemberOpen}
         />
       )}
     </>
