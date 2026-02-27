@@ -139,7 +139,7 @@ export function CreateProjectDialog({
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent className="overflow-y-auto sm:max-w-lg" showCloseButton>
+      <SheetContent className="flex flex-col sm:max-w-lg" showCloseButton>
         <SheetHeader>
           <SheetTitle className="flex items-center gap-3">
             <div
@@ -155,8 +155,8 @@ export function CreateProjectDialog({
           </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col">
-          <div className="space-y-6 px-4">
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 space-y-6 overflow-y-auto px-4 pb-4">
             {/* Icon & color selector */}
             <div className="space-y-2">
               <Label>Icono y color</Label>
@@ -338,16 +338,18 @@ export function CreateProjectDialog({
             </div>
           </div>
 
-          <SheetFooter className="px-4">
+          <SheetFooter className="flex-row border-t px-4">
             <Button
               type="button"
               variant="outline"
+              className="flex-1"
               onClick={() => handleOpenChange(false)}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
+              className="flex-1"
               disabled={!name.trim() || !key.trim() || !!keyError || createProject.isPending}
             >
               {createProject.isPending && <Loader2 className="size-4 animate-spin" />}
