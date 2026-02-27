@@ -109,6 +109,9 @@ export interface NotificationChannelConfig {
   internalEnabled: boolean;
   // Templates
   emailTemplates: EmailTemplates;
+  // UI alert config
+  uiAlertProvider: 'sileo' | 'shadcn';
+  sileoConfig: Record<string, any> | null;
 }
 
 export interface StorageConfig {

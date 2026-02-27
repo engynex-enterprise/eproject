@@ -96,8 +96,23 @@ const THEMES: { id: SileoTheme; label: string; description: string }[] = [
   { id: 'dark',   label: 'Oscuro',   description: 'Siempre fondo claro' },
 ];
 
+const ALERT_PROVIDERS: { id: 'sileo' | 'shadcn'; name: string; description: string; badge?: string }[] = [
+  {
+    id: 'sileo',
+    name: 'Sileo',
+    description: 'Toasts animados y personalizables con soporte completo de temas.',
+    badge: 'Recomendado',
+  },
+  {
+    id: 'shadcn',
+    name: 'Shadcn / Sonner',
+    description: 'Toasts nativos de Sonner integrados con el sistema de diseño de la app.',
+  },
+];
+
 function SileoConfigSection() {
   const { config, updateConfig, resetConfig } = useSileoConfigStore();
+  const isSileo = config.alertProvider === 'sileo';
 
   const durationLabel =
     config.duration === null
@@ -108,7 +123,7 @@ function SileoConfigSection() {
 
   const firePreview = () => {
     sileo.success({
-      title: 'Notificacion de prueba',
+      title: 'Notificacion de prueba (Sileo)',
       description: `Posicion: ${config.position} · Duracion: ${durationLabel}`,
     });
   };
@@ -119,87 +134,49 @@ function SileoConfigSection() {
       <div className="space-y-1.5">
         <h3 className="text-sm font-semibold">Alertas visuales</h3>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Personaliza como y donde aparecen las notificaciones emergentes en pantalla. Se guarda automaticamente en este dispositivo.
+          Elige el sistema de notificaciones emergentes y personaliza su apariencia. Se guarda en la base de datos al pulsar "Guardar cambios".
         </p>
-        <Button variant="ghost" size="sm" className="mt-2 gap-1.5 text-muted-foreground" onClick={resetConfig}>
-          <RotateCcw className="size-3.5" />
-          Restablecer
-        </Button>
+        {isSileo && (
+          <Button variant="ghost" size="sm" className="mt-2 gap-1.5 text-muted-foreground" onClick={resetConfig}>
+            <RotateCcw className="size-3.5" />
+            Restablecer
+          </Button>
+        )}
       </div>
 
       {/* Right: cards */}
       <div className="space-y-6">
 
-        {/* ── Position ──────────────────────────────────────────── */}
+        {/* ── Provider picker ───────────────────────────────────── */}
         <Card className="shadow-sm bg-white dark:bg-card">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Posicion</CardTitle>
-            <CardDescription>Esquina de la pantalla donde apareceran las alertas.</CardDescription>
+            <CardTitle className="text-sm">Proveedor de alertas</CardTitle>
+            <CardDescription>Selecciona la libreria que mostrara las notificaciones en pantalla.</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* 3×2 visual grid */}
-            <div className="relative mx-auto w-full max-w-xs aspect-video rounded-lg border-2 border-dashed border-border bg-muted/30 p-2">
-              {/* Screen label */}
-              <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-muted-foreground/50 uppercase tracking-widest select-none">
-                Pantalla
-              </span>
-              {POSITIONS.map((p) => {
-                const active = config.position === p.id;
+            <div className="grid gap-3 sm:grid-cols-2">
+              {ALERT_PROVIDERS.map((p) => {
+                const active = config.alertProvider === p.id;
                 return (
                   <button
                     key={p.id}
                     type="button"
-                    title={p.label}
-                    onClick={() => updateConfig({ position: p.id })}
-                    style={{
-                      position: 'absolute',
-                      top:    p.row === 0 ? '6px'  : undefined,
-                      bottom: p.row === 1 ? '6px'  : undefined,
-                      left:   p.col === 0 ? '6px'  : p.col === 1 ? '50%' : undefined,
-                      right:  p.col === 2 ? '6px'  : undefined,
-                      transform: p.col === 1 ? 'translateX(-50%)' : undefined,
-                    }}
-                    className={`w-14 rounded px-1.5 py-1 text-[9px] font-semibold leading-tight transition-all ${
-                      active
-                        ? 'bg-primary text-primary-foreground shadow-md scale-105'
-                        : 'bg-background/80 text-muted-foreground border border-border hover:bg-muted hover:text-foreground'
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ── Theme ─────────────────────────────────────────────── */}
-        <Card className="shadow-sm bg-white dark:bg-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Tema de las alertas</CardTitle>
-            <CardDescription>Color de fondo de los toasts independiente del tema de la app.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {THEMES.map((t) => {
-                const active = config.theme === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => updateConfig({ theme: t.id })}
-                    className={`flex items-start gap-2.5 rounded-xl border p-3.5 text-left transition-all ${
+                    onClick={() => updateConfig({ alertProvider: p.id })}
+                    className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-all ${
                       active
                         ? 'border-primary bg-primary/5 ring-1 ring-primary'
                         : 'border-border bg-white dark:bg-card hover:border-muted-foreground/30 hover:bg-muted/20'
                     }`}
                   >
-                    <div className={`mt-0.5 flex size-3.5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${active ? 'border-primary' : 'border-muted-foreground/40'}`}>
-                      {active && <span className="size-1.5 rounded-full bg-primary block" />}
+                    <div className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${active ? 'border-primary' : 'border-muted-foreground/40'}`}>
+                      {active && <span className="size-2 rounded-full bg-primary block" />}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium leading-tight">{t.label}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground leading-snug">{t.description}</p>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold">{p.name}</span>
+                        {p.badge && <Badge variant="secondary" className="text-[10px] py-0 px-1.5">{p.badge}</Badge>}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{p.description}</p>
                     </div>
                   </button>
                 );
@@ -208,113 +185,178 @@ function SileoConfigSection() {
           </CardContent>
         </Card>
 
-        {/* ── Duration + Roundness ───────────────────────────────── */}
-        <Card className="shadow-sm bg-white dark:bg-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Comportamiento</CardTitle>
-            <CardDescription>Tiempo en pantalla y radio de los bordes.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Duration slider */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">Duracion</Label>
-                <span className="text-sm font-semibold tabular-nums text-primary min-w-[3rem] text-right">
-                  {durationLabel}
-                </span>
-              </div>
-              <Slider
-                min={0}
-                max={16}
-                step={1}
-                value={[
-                  config.duration === null
-                    ? 16
-                    : Math.round(config.duration / 1000),
-                ]}
-                onValueChange={([v]) =>
-                  updateConfig({ duration: v === 16 ? null : v * 1000 })
-                }
-              />
-              <div className="flex justify-between text-[10px] text-muted-foreground">
-                <span>0 s</span>
-                <span>8 s</span>
-                <span>Nunca</span>
-              </div>
-            </div>
+        {/* ── Sileo-only config ─────────────────────────────────── */}
+        {isSileo && (
+          <>
+            {/* Position */}
+            <Card className="shadow-sm bg-white dark:bg-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Posicion</CardTitle>
+                <CardDescription>Esquina de la pantalla donde apareceran las alertas.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="relative mx-auto w-full max-w-xs aspect-video rounded-lg border-2 border-dashed border-border bg-muted/30 p-2">
+                  <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-muted-foreground/50 uppercase tracking-widest select-none">
+                    Pantalla
+                  </span>
+                  {POSITIONS.map((p) => {
+                    const active = config.position === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        title={p.label}
+                        onClick={() => updateConfig({ position: p.id })}
+                        style={{
+                          position: 'absolute',
+                          top:    p.row === 0 ? '6px'  : undefined,
+                          bottom: p.row === 1 ? '6px'  : undefined,
+                          left:   p.col === 0 ? '6px'  : p.col === 1 ? '50%' : undefined,
+                          right:  p.col === 2 ? '6px'  : undefined,
+                          transform: p.col === 1 ? 'translateX(-50%)' : undefined,
+                        }}
+                        className={`w-14 rounded px-1.5 py-1 text-[9px] font-semibold leading-tight transition-all ${
+                          active
+                            ? 'bg-primary text-primary-foreground shadow-md scale-105'
+                            : 'bg-background/80 text-muted-foreground border border-border hover:bg-muted hover:text-foreground'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
 
-            <Separator />
+            {/* Theme */}
+            <Card className="shadow-sm bg-white dark:bg-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Tema de las alertas</CardTitle>
+                <CardDescription>Color de fondo de los toasts independiente del tema de la app.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {THEMES.map((t) => {
+                    const active = config.theme === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => updateConfig({ theme: t.id })}
+                        className={`flex items-start gap-2.5 rounded-xl border p-3.5 text-left transition-all ${
+                          active
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                            : 'border-border bg-white dark:bg-card hover:border-muted-foreground/30 hover:bg-muted/20'
+                        }`}
+                      >
+                        <div className={`mt-0.5 flex size-3.5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${active ? 'border-primary' : 'border-muted-foreground/40'}`}>
+                          {active && <span className="size-1.5 rounded-full bg-primary block" />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium leading-tight">{t.label}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground leading-snug">{t.description}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
 
-            {/* Roundness slider */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">Redondez</Label>
-                <span className="text-sm font-semibold tabular-nums text-primary min-w-[3rem] text-right">
-                  {config.roundness} px
-                </span>
-              </div>
-              <Slider
-                min={0}
-                max={24}
-                step={1}
-                value={[config.roundness]}
-                onValueChange={([v]) => updateConfig({ roundness: v })}
-              />
-              <div className="flex justify-between text-[10px] text-muted-foreground">
-                <span>Cuadrado</span>
-                <span>Redondeado</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ── Offset ────────────────────────────────────────────── */}
-        <Card className="shadow-sm bg-white dark:bg-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Desplazamiento</CardTitle>
-            <CardDescription>Distancia en pixeles desde cada borde de la pantalla.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {(
-                [
-                  { key: 'offsetTop',    label: 'Arriba' },
-                  { key: 'offsetRight',  label: 'Derecha' },
-                  { key: 'offsetBottom', label: 'Abajo' },
-                  { key: 'offsetLeft',   label: 'Izquierda' },
-                ] as const
-              ).map(({ key, label }) => (
-                <div key={key} className="space-y-2">
-                  <Label htmlFor={key} className="text-xs text-muted-foreground">{label}</Label>
-                  <div className="relative">
-                    <Input
-                      id={key}
-                      type="number"
-                      min={0}
-                      max={200}
-                      value={config[key]}
-                      onChange={(e) =>
-                        updateConfig({ [key]: Math.max(0, Number(e.target.value)) })
-                      }
-                      className="pr-7 text-sm"
-                    />
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                      px
-                    </span>
+            {/* Duration + Roundness */}
+            <Card className="shadow-sm bg-white dark:bg-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Comportamiento</CardTitle>
+                <CardDescription>Tiempo en pantalla y radio de los bordes.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Duracion</Label>
+                    <span className="text-sm font-semibold tabular-nums text-primary min-w-[3rem] text-right">{durationLabel}</span>
+                  </div>
+                  <Slider
+                    min={0} max={16} step={1}
+                    value={[config.duration === null ? 16 : Math.round(config.duration / 1000)]}
+                    onValueChange={([v]) => updateConfig({ duration: v === 16 ? null : v * 1000 })}
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>0 s</span><span>8 s</span><span>Nunca</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <Separator />
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Redondez</Label>
+                    <span className="text-sm font-semibold tabular-nums text-primary min-w-[3rem] text-right">{config.roundness} px</span>
+                  </div>
+                  <Slider
+                    min={0} max={24} step={1}
+                    value={[config.roundness]}
+                    onValueChange={([v]) => updateConfig({ roundness: v })}
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>Cuadrado</span><span>Redondeado</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* ── Preview ───────────────────────────────────────────── */}
-        <div className="flex justify-end">
-          <Button variant="outline" onClick={firePreview} className="gap-2">
-            <Sparkles className="size-4" />
-            Probar notificacion
-          </Button>
-        </div>
+            {/* Offset */}
+            <Card className="shadow-sm bg-white dark:bg-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Desplazamiento</CardTitle>
+                <CardDescription>Distancia en pixeles desde cada borde de la pantalla.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  {(
+                    [
+                      { key: 'offsetTop',    label: 'Arriba' },
+                      { key: 'offsetRight',  label: 'Derecha' },
+                      { key: 'offsetBottom', label: 'Abajo' },
+                      { key: 'offsetLeft',   label: 'Izquierda' },
+                    ] as const
+                  ).map(({ key, label }) => (
+                    <div key={key} className="space-y-2">
+                      <Label htmlFor={key} className="text-xs text-muted-foreground">{label}</Label>
+                      <div className="relative">
+                        <Input
+                          id={key} type="number" min={0} max={200}
+                          value={config[key]}
+                          onChange={(e) => updateConfig({ [key]: Math.max(0, Number(e.target.value)) })}
+                          className="pr-7 text-sm"
+                        />
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">px</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Preview */}
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={firePreview} className="gap-2">
+                <Sparkles className="size-4" />
+                Probar notificacion
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* ── Shadcn info ───────────────────────────────────────── */}
+        {!isSileo && (
+          <Card className="shadow-sm bg-white dark:bg-card border-dashed">
+            <CardContent className="pt-5 pb-4">
+              <p className="text-sm text-muted-foreground">
+                Sonner usa la posicion, tema y redondez configurados arriba cuando estes disponibles.
+                Para opciones avanzadas de Sonner visita su documentacion oficial.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
       </div>
     </div>
@@ -329,6 +371,7 @@ export default function OrgNotificationsPage() {
 
   const { data: config, isLoading, isError } = useNotificationConfig(orgId);
   const updateConfig = useUpdateNotificationConfig(orgId);
+  const { config: sileoStore, updateConfig: updateSileoConfig } = useSileoConfigStore();
 
   // Email general
   const [emailEnabled,     setEmailEnabled]     = useState(false);
@@ -399,6 +442,15 @@ export default function OrgNotificationsPage() {
     if (config.emailTemplates) {
       setTemplates(config.emailTemplates as unknown as Record<string, EmailTemplate>);
     }
+    // Sync Sileo config from DB into the local store
+    const patch: Record<string, any> = {
+      alertProvider: (config.uiAlertProvider ?? 'sileo') as 'sileo' | 'shadcn',
+    };
+    if (config.sileoConfig && typeof config.sileoConfig === 'object') {
+      Object.assign(patch, config.sileoConfig);
+    }
+    updateSileoConfig(patch);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config]);
 
   const updateTemplate = (key: string, field: keyof EmailTemplate, value: string | boolean) => {
@@ -430,6 +482,18 @@ export default function OrgNotificationsPage() {
       whatsappApiKey: whatsappApiKey || null,
       internalEnabled,
       emailTemplates: templates as never,
+      // Sileo / UI alert config
+      uiAlertProvider: sileoStore.alertProvider,
+      sileoConfig: {
+        position:     sileoStore.position,
+        theme:        sileoStore.theme,
+        duration:     sileoStore.duration,
+        roundness:    sileoStore.roundness,
+        offsetTop:    sileoStore.offsetTop,
+        offsetRight:  sileoStore.offsetRight,
+        offsetBottom: sileoStore.offsetBottom,
+        offsetLeft:   sileoStore.offsetLeft,
+      },
     });
   };
 

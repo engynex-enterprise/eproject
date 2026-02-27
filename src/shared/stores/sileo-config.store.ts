@@ -2,6 +2,8 @@ import { create } from 'zustand';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export type AlertProvider = 'sileo' | 'shadcn';
+
 export type SileoPosition =
   | 'top-left'
   | 'top-center'
@@ -13,6 +15,7 @@ export type SileoPosition =
 export type SileoTheme = 'light' | 'dark' | 'system';
 
 export interface SileoConfig {
+  alertProvider: AlertProvider;
   position: SileoPosition;
   theme: SileoTheme;
   /** Duration in ms. null = never auto-dismiss. */
@@ -27,7 +30,8 @@ export interface SileoConfig {
 
 const STORAGE_KEY = 'sileo-config';
 
-const DEFAULT_CONFIG: SileoConfig = {
+export const DEFAULT_CONFIG: SileoConfig = {
+  alertProvider: 'sileo',
   position: 'top-right',
   theme: 'system',
   duration: 4000,
@@ -79,5 +83,3 @@ export const useSileoConfigStore = create<SileoConfigState>((set) => ({
     set({ config: DEFAULT_CONFIG });
   },
 }));
-
-export { DEFAULT_CONFIG };

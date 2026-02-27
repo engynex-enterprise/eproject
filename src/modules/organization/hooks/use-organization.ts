@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { sileo } from 'sileo';
+import { toast } from '@/shared/lib/toast';
 import {
   getOrganization,
   updateOrganization,
@@ -103,10 +103,10 @@ export function useUpdateOrganization(orgId: number) {
       updateOrganization(orgId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.detail(orgId) });
-      sileo.success({ title: 'Organización actualizada' });
+      toast.success({ title: 'Organización actualizada' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al actualizar la organización', description: errorMessage(error) });
+      toast.error({ title: 'Error al actualizar la organización', description: errorMessage(error) });
     },
   });
 }
@@ -128,10 +128,10 @@ export function useInviteMember(orgId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.members(orgId) });
       queryClient.invalidateQueries({ queryKey: orgKeys.invitations(orgId) });
-      sileo.success({ title: 'Invitación enviada', description: 'El usuario recibirá un correo con el enlace de acceso.' });
+      toast.success({ title: 'Invitación enviada', description: 'El usuario recibirá un correo con el enlace de acceso.' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al enviar la invitación', description: errorMessage(error) });
+      toast.error({ title: 'Error al enviar la invitación', description: errorMessage(error) });
     },
   });
 }
@@ -142,10 +142,10 @@ export function useCreateMember(orgId: number) {
     mutationFn: (data: CreateMemberData) => createMember(orgId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.members(orgId) });
-      sileo.success({ title: 'Miembro creado', description: 'La cuenta ha sido creada y el acceso habilitado.' });
+      toast.success({ title: 'Miembro creado', description: 'La cuenta ha sido creada y el acceso habilitado.' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al crear el miembro', description: errorMessage(error) });
+      toast.error({ title: 'Error al crear el miembro', description: errorMessage(error) });
     },
   });
 }
@@ -156,10 +156,10 @@ export function useRemoveMember(orgId: number) {
     mutationFn: (memberId: number) => removeMember(orgId, memberId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.members(orgId) });
-      sileo.success({ title: 'Miembro eliminado', description: 'El usuario ya no tiene acceso a la organización.' });
+      toast.success({ title: 'Miembro eliminado', description: 'El usuario ya no tiene acceso a la organización.' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al eliminar el miembro', description: errorMessage(error) });
+      toast.error({ title: 'Error al eliminar el miembro', description: errorMessage(error) });
     },
   });
 }
@@ -171,10 +171,10 @@ export function useUpdateMemberRole(orgId: number) {
       updateMemberRole(orgId, memberId, roleId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.members(orgId) });
-      sileo.success({ title: 'Rol actualizado' });
+      toast.success({ title: 'Rol actualizado' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al actualizar el rol', description: errorMessage(error) });
+      toast.error({ title: 'Error al actualizar el rol', description: errorMessage(error) });
     },
   });
 }
@@ -194,10 +194,10 @@ export function useCancelInvitation(orgId: number) {
       cancelInvitation(orgId, invitationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.invitations(orgId) });
-      sileo.success({ title: 'Invitación cancelada' });
+      toast.success({ title: 'Invitación cancelada' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al cancelar la invitación', description: errorMessage(error) });
+      toast.error({ title: 'Error al cancelar la invitación', description: errorMessage(error) });
     },
   });
 }
@@ -218,10 +218,10 @@ export function useCreateRole(orgId: number) {
     mutationFn: (data: CreateRoleData) => createRole(orgId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.roles(orgId) });
-      sileo.success({ title: 'Rol creado' });
+      toast.success({ title: 'Rol creado' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al crear el rol', description: errorMessage(error) });
+      toast.error({ title: 'Error al crear el rol', description: errorMessage(error) });
     },
   });
 }
@@ -233,10 +233,10 @@ export function useUpdateRole(orgId: number) {
       updateRole(roleId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.roles(orgId) });
-      sileo.success({ title: 'Rol actualizado' });
+      toast.success({ title: 'Rol actualizado' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al actualizar el rol', description: errorMessage(error) });
+      toast.error({ title: 'Error al actualizar el rol', description: errorMessage(error) });
     },
   });
 }
@@ -247,10 +247,10 @@ export function useDeleteRole(orgId: number) {
     mutationFn: (roleId: number) => deleteRole(roleId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.roles(orgId) });
-      sileo.success({ title: 'Rol eliminado' });
+      toast.success({ title: 'Rol eliminado' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al eliminar el rol', description: errorMessage(error) });
+      toast.error({ title: 'Error al eliminar el rol', description: errorMessage(error) });
     },
   });
 }
@@ -279,10 +279,10 @@ export function useUpdateAppearance(orgId: number) {
       updateAppearance(orgId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.appearance(orgId) });
-      sileo.success({ title: 'Apariencia actualizada' });
+      toast.success({ title: 'Apariencia actualizada' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al actualizar la apariencia', description: errorMessage(error) });
+      toast.error({ title: 'Error al actualizar la apariencia', description: errorMessage(error) });
     },
   });
 }
@@ -303,10 +303,10 @@ export function useUpdateSsoConfig(orgId: number) {
     mutationFn: (data: Partial<SsoConfig>) => updateSsoConfig(orgId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.sso(orgId) });
-      sileo.success({ title: 'Configuración SSO guardada' });
+      toast.success({ title: 'Configuración SSO guardada' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al guardar la configuración SSO', description: errorMessage(error) });
+      toast.error({ title: 'Error al guardar la configuración SSO', description: errorMessage(error) });
     },
   });
 }
@@ -330,10 +330,10 @@ export function useUpdateNotificationConfig(orgId: number) {
       queryClient.invalidateQueries({
         queryKey: orgKeys.notificationConfig(orgId),
       });
-      sileo.success({ title: 'Notificaciones guardadas', description: 'La configuración de canales ha sido actualizada.' });
+      toast.success({ title: 'Notificaciones guardadas', description: 'La configuración de canales ha sido actualizada.' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al guardar las notificaciones', description: errorMessage(error) });
+      toast.error({ title: 'Error al guardar las notificaciones', description: errorMessage(error) });
     },
   });
 }
@@ -357,10 +357,10 @@ export function useUpdateStorageConfig(orgId: number) {
       queryClient.invalidateQueries({
         queryKey: orgKeys.storageConfig(orgId),
       });
-      sileo.success({ title: 'Almacenamiento actualizado' });
+      toast.success({ title: 'Almacenamiento actualizado' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al guardar el almacenamiento', description: errorMessage(error) });
+      toast.error({ title: 'Error al guardar el almacenamiento', description: errorMessage(error) });
     },
   });
 }
@@ -384,10 +384,10 @@ export function useUpdateSecurityConfig(orgId: number) {
       queryClient.invalidateQueries({
         queryKey: orgKeys.securityConfig(orgId),
       });
-      sileo.success({ title: 'Seguridad actualizada' });
+      toast.success({ title: 'Seguridad actualizada' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al guardar la configuración de seguridad', description: errorMessage(error) });
+      toast.error({ title: 'Error al guardar la configuración de seguridad', description: errorMessage(error) });
     },
   });
 }
@@ -418,10 +418,10 @@ export function useCreateApiKey(orgId: number) {
     mutationFn: (data: CreateApiKeyData) => createApiKey(orgId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.apiKeys(orgId) });
-      sileo.success({ title: 'API Key creada', description: 'Copia la clave ahora, no se mostrará de nuevo.' });
+      toast.success({ title: 'API Key creada', description: 'Copia la clave ahora, no se mostrará de nuevo.' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al crear la API Key', description: errorMessage(error) });
+      toast.error({ title: 'Error al crear la API Key', description: errorMessage(error) });
     },
   });
 }
@@ -432,10 +432,10 @@ export function useRevokeApiKey(orgId: number) {
     mutationFn: (keyId: number) => revokeApiKey(orgId, keyId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.apiKeys(orgId) });
-      sileo.success({ title: 'API Key revocada' });
+      toast.success({ title: 'API Key revocada' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al revocar la API Key', description: errorMessage(error) });
+      toast.error({ title: 'Error al revocar la API Key', description: errorMessage(error) });
     },
   });
 }
@@ -456,10 +456,10 @@ export function useCreateWebhook(orgId: number) {
     mutationFn: (data: CreateWebhookData) => createWebhook(orgId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.webhooks(orgId) });
-      sileo.success({ title: 'Webhook creado' });
+      toast.success({ title: 'Webhook creado' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al crear el webhook', description: errorMessage(error) });
+      toast.error({ title: 'Error al crear el webhook', description: errorMessage(error) });
     },
   });
 }
@@ -470,10 +470,10 @@ export function useDeleteWebhook(orgId: number) {
     mutationFn: (webhookId: number) => deleteWebhook(orgId, webhookId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.webhooks(orgId) });
-      sileo.success({ title: 'Webhook eliminado' });
+      toast.success({ title: 'Webhook eliminado' });
     },
     onError: (error) => {
-      sileo.error({ title: 'Error al eliminar el webhook', description: errorMessage(error) });
+      toast.error({ title: 'Error al eliminar el webhook', description: errorMessage(error) });
     },
   });
 }

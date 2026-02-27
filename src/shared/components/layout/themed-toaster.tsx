@@ -1,23 +1,38 @@
 'use client';
 
 import { useTheme } from 'next-themes';
-import { Toaster } from 'sileo';
+import { Toaster as SileoToaster } from 'sileo';
+import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 import { useSileoConfigStore } from '@/shared/stores/sileo-config.store';
 
 export function ThemedToaster() {
   const { resolvedTheme } = useTheme();
   const { config } = useSileoConfigStore();
 
-  // Resolve the actual theme to apply
-  const isDark =
+  const resolvedThemeValue =
     config.theme === 'system'
-      ? resolvedTheme === 'dark'
-      : config.theme === 'dark';
+      ? (resolvedTheme as 'light' | 'dark')
+      : config.theme;
+
+  const isDark = resolvedThemeValue === 'dark';
+
+  if (config.alertProvider === 'shadcn') {
+    return (
+      <SonnerToaster
+        position={config.position}
+        theme={resolvedThemeValue}
+        richColors
+        toastOptions={{
+          style: { borderRadius: `${config.roundness}px` },
+        }}
+      />
+    );
+  }
 
   return (
-    <Toaster
+    <SileoToaster
       position={config.position}
-      theme={config.theme === 'system' ? (resolvedTheme as 'light' | 'dark') : config.theme}
+      theme={resolvedThemeValue}
       offset={{
         top: config.offsetTop,
         right: config.offsetRight,
