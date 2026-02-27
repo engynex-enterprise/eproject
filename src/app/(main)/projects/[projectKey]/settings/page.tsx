@@ -450,8 +450,11 @@ export default function SettingsGeneralPage() {
         </CardContent>
       </Card>
 
-      {/* ── Sticky save bar ─────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 border-t bg-white/80 backdrop-blur-sm dark:bg-card/80">
+      {/* ── Fixed save bar ──────────────────────────────────────── */}
+      <div
+        className="fixed bottom-0 right-0 z-20 border-t bg-white/80 backdrop-blur-sm dark:bg-card/80"
+        style={{ left: 'var(--sidebar-width)' }}
+      >
         <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-3">
           <p className="text-xs text-muted-foreground">
             Los cambios no se guardan automaticamente.
