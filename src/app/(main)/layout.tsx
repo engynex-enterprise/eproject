@@ -1,0 +1,57 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/shared/components/layout/app-sidebar";
+import { SiteHeader } from "@/shared/components/layout/site-header";
+import { useAuthStore } from "@/shared/stores/auth.store";
+
+export default function MainLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      router.replace("/login");
+    } else {
+      // Hydrate the zustand store from localStorage so isAuthenticated stays true
+      useAuthStore.setState({ accessToken: token, isAuthenticated: true });
+      setIsChecking(false);
+    }
+  }, [router]);
+
+  // React to forced logout (e.g. token refresh failed)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  useEffect(() => {
+    if (!isChecking && !isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [isAuthenticated, isChecking, router]);
+
+  if (isChecking) {
+    return (
+      <div className="flex min-h-svh items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <SiteHeader />
+        <main className="flex-1 p-4 md:p-6">{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
