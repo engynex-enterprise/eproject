@@ -6,6 +6,7 @@ import {
   updateOrganization,
   getMembers,
   inviteMember,
+  createMember,
   removeMember,
   updateMemberRole,
   getPendingInvitations,
@@ -35,6 +36,7 @@ import {
   getPlatformInfo,
   type UpdateOrganizationData,
   type InviteMemberData,
+  type CreateMemberData,
   type CreateRoleData,
   type UpdateRoleData,
   type AppearanceConfig,
@@ -111,6 +113,16 @@ export function useInviteMember(orgId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.members(orgId) });
       queryClient.invalidateQueries({ queryKey: orgKeys.invitations(orgId) });
+    },
+  });
+}
+
+export function useCreateMember(orgId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateMemberData) => createMember(orgId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.members(orgId) });
     },
   });
 }

@@ -21,6 +21,14 @@ export interface InviteMemberData {
   roleId: number;
 }
 
+export interface CreateMemberData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  roleId: number;
+}
+
 export interface CreateRoleData {
   name: string;
   description?: string | null;
@@ -131,6 +139,17 @@ export async function inviteMember(
 ): Promise<PendingInvitation> {
   const res = await apiClient.post<ApiResponse<PendingInvitation>>(
     `/organizations/${orgId}/members/invite`,
+    data,
+  );
+  return res.data;
+}
+
+export async function createMember(
+  orgId: number,
+  data: CreateMemberData,
+): Promise<OrganizationMember> {
+  const res = await apiClient.post<ApiResponse<OrganizationMember>>(
+    `/organizations/${orgId}/members`,
     data,
   );
   return res.data;
