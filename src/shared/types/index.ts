@@ -125,6 +125,7 @@ export interface Project {
   leadId: number | null;
   lead: User | null;
   iconUrl: string | null;
+  color: string | null;
   isArchived: boolean;
   defaultAssigneeId: number | null;
   createdAt: string;

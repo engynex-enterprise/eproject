@@ -89,6 +89,7 @@ export default function SettingsGeneralPage() {
     setName(project.name);
     setDescription(project.description ?? '');
     setSelectedIcon(project.iconUrl ?? 'folder-kanban');
+    setSelectedColor(project.color ?? '#0052CC');
     setInitialized(true);
     if (project.lead) {
       setSelectedLead({
