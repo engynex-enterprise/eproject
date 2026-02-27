@@ -72,6 +72,7 @@ export interface Organization {
   description: string | null;
   logoUrl: string | null;
   ownerId: number;
+  isPersonal: boolean;
   ssoEnabled: boolean;
   ssoProvider: string | null;
   ssoConfig: Record<string, unknown> | null;

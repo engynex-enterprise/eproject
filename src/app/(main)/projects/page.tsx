@@ -25,8 +25,6 @@ import type {
   ViewMode,
 } from '@/modules/projects/components/projects-toolbar';
 
-// TODO: Get orgId from auth context/store
-const ORG_ID = 1;
 const FAVORITES_KEY = 'eproject:favorite-projects';
 const VIEW_MODE_KEY = 'eproject:projects-view-mode';
 
@@ -68,10 +66,15 @@ export default function ProjectsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   // Data
-  const { data, isLoading } = useProjects(ORG_ID);
-  const updateProject = useUpdateProject();
-  const deleteProject = useDeleteProject(ORG_ID);
   const currentUserId = useAuthStore((s) => s.user?.id);
+  const currentOrgId = useAuthStore((s) => s.currentOrgId);
+  const organizations = useAuthStore((s) => s.organizations);
+  const personalOrg = organizations.find((o) => o.isPersonal);
+  // When in personal mode (null), use personal org; otherwise use selected org
+  const effectiveOrgId = currentOrgId ?? personalOrg?.id ?? 0;
+  const { data, isLoading } = useProjects(effectiveOrgId);
+  const updateProject = useUpdateProject();
+  const deleteProject = useDeleteProject(effectiveOrgId);
 
   const projects = data?.data ?? [];
 
@@ -401,11 +404,13 @@ export default function ProjectsPage() {
         onToggleFavorite={handleToggleFavorite}
       />
 
-      <CreateProjectDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        orgId={ORG_ID}
-      />
+      {effectiveOrgId > 0 && (
+        <CreateProjectDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          orgId={effectiveOrgId}
+        />
+      )}
 
       {/* Add member dialog */}
       <AddMemberDialog
@@ -413,7 +418,7 @@ export default function ProjectsPage() {
         onOpenChange={(open) => !open && setAddMemberProject(null)}
         projectId={addMemberProject?.id ?? 0}
         projectName={addMemberProject?.name ?? ''}
-        orgId={ORG_ID}
+        orgId={effectiveOrgId}
       />
     </div>
   );

@@ -5,6 +5,7 @@ import { useCallback, useEffect } from 'react';
 import { apiClient } from '@/shared/lib/api-client';
 import { useAuthStore } from '@/shared/stores/auth.store';
 import type {
+  ApiError,
   ApiResponse,
   AuthTokens,
   LoginRequest,
@@ -12,6 +13,21 @@ import type {
   RegisterRequest,
   User,
 } from '@/shared/types';
+
+/**
+ * Resolves which org to activate after fetching the org list.
+ * - If localStorage has a saved org id → restore it (any org type).
+ * - Otherwise → first non-personal org, or null (personal mode).
+ */
+function resolveOrgId(orgs: Organization[]): number | null {
+  const storedId = localStorage.getItem('current_org_id');
+  if (storedId) {
+    const match = orgs.find((o) => o.id === Number(storedId));
+    if (match) return match.id;
+  }
+  // Default: first non-personal org, or null if only personal org exists
+  return orgs.find((o) => !o.isPersonal)?.id ?? null;
+}
 
 export function useAuth() {
   const {
@@ -44,13 +60,7 @@ export function useAuth() {
         );
         setOrganizations(orgsRes.data);
 
-        // Restore last selected org or pick first
-        const storedOrgId = localStorage.getItem('current_org_id');
-        if (storedOrgId && orgsRes.data.some((o) => o.id === Number(storedOrgId))) {
-          setCurrentOrg(Number(storedOrgId));
-        } else if (orgsRes.data.length > 0) {
-          setCurrentOrg(orgsRes.data[0].id);
-        }
+        setCurrentOrg(resolveOrgId(orgsRes.data));
       } catch {
         // Organizations fetch is non-critical at login time
       }
@@ -98,23 +108,21 @@ export function useAuth() {
         );
         setOrganizations(orgsRes.data);
 
-        // Restore last selected org from localStorage, or default to first
-        const storedOrgId = localStorage.getItem('current_org_id');
-        if (
-          storedOrgId &&
-          orgsRes.data.some((o) => o.id === Number(storedOrgId))
-        ) {
-          setCurrentOrg(Number(storedOrgId));
-        } else if (orgsRes.data.length > 0) {
-          setCurrentOrg(orgsRes.data[0].id);
-        }
+        setCurrentOrg(resolveOrgId(orgsRes.data));
       } catch {
         // org fetch is non-critical
       }
 
       return res.data;
-    } catch {
-      storeLogout();
+    } catch (error) {
+      // Only clear the session for definitive auth failures (401).
+      // Network errors, 500s, or other transient issues should NOT log the
+      // user out — the api-client already handles the refresh → retry cycle
+      // and emits 'auth:logout' when both tokens are truly expired.
+      const status = (error as ApiError)?.statusCode;
+      if (status === 401) {
+        storeLogout();
+      }
       return null;
     }
   }, [setUser, storeLogout, setOrganizations, setCurrentOrg]);

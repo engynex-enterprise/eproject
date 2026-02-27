@@ -26,13 +26,14 @@ export default function MainLayout({
     if (!token) {
       router.replace("/login");
     } else {
-      // Hydrate the zustand store from localStorage so isAuthenticated stays true
       useAuthStore.setState({ accessToken: token, isAuthenticated: true });
       setIsChecking(false);
     }
-  }, [router]);
+    // Run only on mount — router.replace is stable across renders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // React to forced logout (e.g. token refresh failed)
+  // React to forced logout (e.g. both tokens expired — auth:logout event)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   useEffect(() => {
     if (!isChecking && !isAuthenticated) {

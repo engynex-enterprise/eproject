@@ -36,8 +36,8 @@ import { useProjects } from "@/modules/projects/hooks/use-projects";
 import { useAccentColor } from "@/shared/providers/accent-color-provider";
 import { NotificationBell } from "@/modules/notifications/components/notification-bell";
 import { getProjectIcon } from "@/modules/projects/components/icon-color-picker";
+import { useAuthStore } from "@/shared/stores/auth.store";
 
-const ORG_ID = 1;
 const FAVORITES_KEY = "eproject:favorite-projects";
 
 function loadFavorites(): Set<number> {
@@ -100,7 +100,8 @@ export function SiteHeader() {
     return () => document.removeEventListener("keydown", down);
   }, []);
 
-  const { data } = useProjects(ORG_ID);
+  const currentOrgId = useAuthStore((s) => s.currentOrgId);
+  const { data } = useProjects(currentOrgId ?? 0);
   const projects = data?.data ?? [];
   const favorites = loadFavorites();
 
