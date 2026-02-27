@@ -113,7 +113,8 @@ export default function SettingsGeneralPage() {
             name: name.trim(),
             description: description.trim() || undefined,
             leadId: selectedLead?.id ?? null,
-            iconUrl: selectedIcon,
+            avatarUrl: selectedIcon,
+            color: selectedColor,
           },
         }),
         {

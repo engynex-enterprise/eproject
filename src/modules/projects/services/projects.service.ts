@@ -94,7 +94,8 @@ export interface UpdateProjectData {
   description?: string;
   leadId?: number | null;
   defaultAssigneeId?: number | null;
-  iconUrl?: string | null;
+  avatarUrl?: string | null;
+  color?: string;
   isArchived?: boolean;
 }
 
