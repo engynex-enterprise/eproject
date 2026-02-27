@@ -85,17 +85,39 @@ export function useAuth() {
     storeLogout();
   }, [storeLogout]);
 
-  // ── Fetch current user (used on app bootstrap) ─────────────────────
+  // ── Fetch current user + organizations (used on app bootstrap) ───────
   const fetchCurrentUser = useCallback(async () => {
     try {
       const res = await apiClient.get<ApiResponse<User>>('/auth/me');
       setUser(res.data);
+
+      // Always re-fetch organizations on bootstrap so the store is populated
+      try {
+        const orgsRes = await apiClient.get<ApiResponse<Organization[]>>(
+          '/organizations',
+        );
+        setOrganizations(orgsRes.data);
+
+        // Restore last selected org from localStorage, or default to first
+        const storedOrgId = localStorage.getItem('current_org_id');
+        if (
+          storedOrgId &&
+          orgsRes.data.some((o) => o.id === Number(storedOrgId))
+        ) {
+          setCurrentOrg(Number(storedOrgId));
+        } else if (orgsRes.data.length > 0) {
+          setCurrentOrg(orgsRes.data[0].id);
+        }
+      } catch {
+        // org fetch is non-critical
+      }
+
       return res.data;
     } catch {
       storeLogout();
       return null;
     }
-  }, [setUser, storeLogout]);
+  }, [setUser, storeLogout, setOrganizations, setCurrentOrg]);
 
   // ── Listen for forced logout (401 after failed refresh) ────────────
   useEffect(() => {
@@ -104,10 +126,10 @@ export function useAuth() {
     return () => window.removeEventListener('auth:logout', handler);
   }, [storeLogout]);
 
-  // ── Hydrate tokens from localStorage on mount ──────────────────────
+  // ── Hydrate on mount: fire whenever the user object is not yet loaded ─
   useEffect(() => {
     const storedToken = localStorage.getItem('access_token');
-    if (storedToken && !isAuthenticated) {
+    if (storedToken && !user) {
       useAuthStore.setState({ accessToken: storedToken, isAuthenticated: true });
       fetchCurrentUser();
     }
