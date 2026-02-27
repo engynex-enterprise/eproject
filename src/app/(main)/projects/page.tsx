@@ -52,7 +52,6 @@ function loadViewMode(): ViewMode {
 export default function ProjectsPage() {
   // Dialogs & sheets
   const [createOpen, setCreateOpen] = useState(false);
-  const [commandOpen, setCommandOpen] = useState(false);
   const [previewProject, setPreviewProject] = useState<ProjectListItem | null>(null);
   const [addMemberProject, setAddMemberProject] = useState<ProjectListItem | null>(null);
 
@@ -228,19 +227,10 @@ export default function ProjectsPage() {
             Gestiona y accede a todos tus proyectos.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setCommandOpen(true)} className="gap-2 text-muted-foreground">
-            <Search className="size-3.5" />
-            Buscar...
-            <kbd className="pointer-events-none ml-1 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:inline-flex">
-              <span className="text-xs">⌘</span>K
-            </kbd>
-          </Button>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
-            Crear proyecto
-          </Button>
-        </div>
+        <Button onClick={() => setCreateOpen(true)}>
+          <Plus className="size-4" />
+          Crear proyecto
+        </Button>
       </div>
 
       {/* Dashboard stats */}
@@ -291,19 +281,6 @@ export default function ProjectsPage() {
         onBulkFavorite={handleBulkFavorite}
         onBulkArchive={handleBulkArchive}
         onBulkDelete={handleBulkDelete}
-      />
-
-      {/* Command palette */}
-      <ProjectCommand
-        open={commandOpen}
-        onOpenChange={setCommandOpen}
-        projects={projects}
-        favorites={favorites}
-        onCreateProject={() => {
-          setCommandOpen(false);
-          setCreateOpen(true);
-        }}
-        onToggleFavorite={handleToggleFavorite}
       />
 
       {/* Preview sheet */}
