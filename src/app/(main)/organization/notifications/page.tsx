@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Save, Loader2, Smartphone, MessageSquare, Bell, Eye, EyeOff, ChevronDown, ChevronUp, Sparkles, RotateCcw } from 'lucide-react';
 import { sileo } from 'sileo';
+import { toast as sonner } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -349,11 +350,25 @@ function SileoConfigSection() {
         {/* ── Shadcn info ───────────────────────────────────────── */}
         {!isSileo && (
           <Card className="shadow-sm bg-white dark:bg-card border-dashed">
-            <CardContent className="pt-5 pb-4">
+            <CardContent className="pt-5 pb-4 space-y-4">
               <p className="text-sm text-muted-foreground">
-                Sonner usa la posicion, tema y redondez configurados arriba cuando estes disponibles.
+                Sonner usa la posicion, tema y redondez configurados arriba cuando esten disponibles.
                 Para opciones avanzadas de Sonner visita su documentacion oficial.
               </p>
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() =>
+                    sonner.success('Notificacion de prueba (Sonner)', {
+                      description: 'El sistema de alertas esta funcionando correctamente.',
+                    })
+                  }
+                >
+                  <Sparkles className="size-4" />
+                  Probar notificacion
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -847,13 +862,16 @@ export default function OrgNotificationsPage() {
         ═══════════════════════════════════════════════════════════ */}
         <div className="grid gap-x-10 gap-y-6 md:grid-cols-[220px_1fr]">
           <div className="space-y-1.5">
-            <h3 className="text-sm font-semibold">SMS</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold">SMS</h3>
+              <Badge variant="secondary" className="text-xs">Proximamente</Badge>
+            </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Configura el proveedor de mensajes SMS para notificaciones de texto.
             </p>
           </div>
 
-          <Card className="shadow-sm bg-white dark:bg-card">
+          <Card className="shadow-sm bg-white dark:bg-card opacity-50 pointer-events-none select-none">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -865,29 +883,9 @@ export default function OrgNotificationsPage() {
                     <CardDescription>Mensajes de texto a telefonos moviles.</CardDescription>
                   </div>
                 </div>
-                <Switch checked={smsEnabled} onCheckedChange={setSmsEnabled} />
+                <Switch checked={false} disabled />
               </div>
             </CardHeader>
-            {smsEnabled && (
-              <CardContent className="space-y-4">
-                <Separator />
-                <div className="space-y-2">
-                  <Label>Proveedor</Label>
-                  <Select value={smsProvider} onValueChange={setSmsProvider}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar proveedor" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="twilio">Twilio</SelectItem>
-                      <SelectItem value="vonage">Vonage</SelectItem>
-                      <SelectItem value="messagebird">MessageBird</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>API Key</Label>
-                  <Input type="password" value={smsApiKey} onChange={(e) => setSmsApiKey(e.target.value)} placeholder="Tu API Key" />
-                </div>
-              </CardContent>
-            )}
           </Card>
         </div>
 
@@ -898,13 +896,16 @@ export default function OrgNotificationsPage() {
         ═══════════════════════════════════════════════════════════ */}
         <div className="grid gap-x-10 gap-y-6 md:grid-cols-[220px_1fr]">
           <div className="space-y-1.5">
-            <h3 className="text-sm font-semibold">WhatsApp</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold">WhatsApp</h3>
+              <Badge variant="secondary" className="text-xs">Proximamente</Badge>
+            </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Notificaciones via WhatsApp Business API.
             </p>
           </div>
 
-          <Card className="shadow-sm bg-white dark:bg-card">
+          <Card className="shadow-sm bg-white dark:bg-card opacity-50 pointer-events-none select-none">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -916,18 +917,9 @@ export default function OrgNotificationsPage() {
                     <CardDescription>Notificaciones por WhatsApp Business.</CardDescription>
                   </div>
                 </div>
-                <Switch checked={whatsappEnabled} onCheckedChange={setWhatsappEnabled} />
+                <Switch checked={false} disabled />
               </div>
             </CardHeader>
-            {whatsappEnabled && (
-              <CardContent className="space-y-4">
-                <Separator />
-                <div className="space-y-2">
-                  <Label>WhatsApp Business API Key</Label>
-                  <Input type="password" value={whatsappApiKey} onChange={(e) => setWhatsappApiKey(e.target.value)} placeholder="Tu WhatsApp Business API Key" />
-                </div>
-              </CardContent>
-            )}
           </Card>
         </div>
 
