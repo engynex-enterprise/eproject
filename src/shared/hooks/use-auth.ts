@@ -64,8 +64,8 @@ export function useAuth() {
         setOrganizations(orgsRes.data);
 
         setCurrentOrg(resolveOrgId(orgsRes.data));
-      } catch {
-        // Organizations fetch is non-critical at login time
+      } catch (orgError) {
+        console.error('[useAuth] Failed to fetch organizations after login:', orgError);
       }
 
       return res.data;
@@ -112,8 +112,8 @@ export function useAuth() {
         setOrganizations(orgsRes.data);
 
         setCurrentOrg(resolveOrgId(orgsRes.data));
-      } catch {
-        // org fetch is non-critical
+      } catch (orgError) {
+        console.error('[useAuth] Failed to fetch organizations:', orgError);
       }
 
       return res.data;

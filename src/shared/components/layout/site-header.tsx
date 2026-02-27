@@ -101,7 +101,10 @@ export function SiteHeader() {
   }, []);
 
   const currentOrgId = useAuthStore((s) => s.currentOrgId);
-  const { data } = useProjects(currentOrgId ?? 0);
+  const organizations = useAuthStore((s) => s.organizations);
+  const personalOrg = organizations.find((o) => o.isPersonal);
+  const effectiveOrgId = currentOrgId ?? personalOrg?.id ?? 0;
+  const { data } = useProjects(effectiveOrgId);
   const projects = data?.data ?? [];
   const favorites = loadFavorites();
 
