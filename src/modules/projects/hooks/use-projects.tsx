@@ -97,3 +97,11 @@ export function useProjectRoles(orgId: number) {
     enabled: !!orgId,
   });
 }
+
+export function useProjectMembers(projectId: number | undefined) {
+  return useQuery({
+    queryKey: ['project-members', projectId],
+    queryFn: () => projectsService.getProjectMembers(projectId!),
+    enabled: !!projectId,
+  });
+}
