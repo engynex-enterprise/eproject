@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   UserPlus,
   MoreHorizontal,
@@ -25,6 +26,8 @@ import {
   Shield,
   UserCheck,
   TrendingUp,
+  AlertTriangle,
+  Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,6 +45,15 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -49,6 +61,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,6 +108,7 @@ import {
   useUpdateMemberRole,
   usePendingInvitations,
   useCancelInvitation,
+  useNotificationConfig,
 } from '@/modules/organization/hooks/use-organization';
 import type { OrganizationMember } from '@/shared/types';
 
@@ -106,14 +127,8 @@ function formatDate(dateStr: string): string {
 }
 
 const AVATAR_COLORS = [
-  'bg-blue-500',
-  'bg-violet-500',
-  'bg-emerald-500',
-  'bg-amber-500',
-  'bg-rose-500',
-  'bg-cyan-500',
-  'bg-indigo-500',
-  'bg-teal-500',
+  'bg-blue-500', 'bg-violet-500', 'bg-emerald-500', 'bg-amber-500',
+  'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-teal-500',
 ];
 
 function getAvatarColor(name: string): string {
@@ -125,23 +140,18 @@ function getAvatarColor(name: string): string {
 }
 
 function isNewThisMonth(dateStr: string): boolean {
-  const date = new Date(dateStr);
+  const d = new Date(dateStr);
   const now = new Date();
-  return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
 }
 
 function exportToCsv(members: OrganizationMember[]) {
   const header = ['Nombre', 'Apellido', 'Correo', 'Rol', 'Se unio'];
   const rows = members.map((m) => [
-    m.user.firstName,
-    m.user.lastName,
-    m.user.email,
-    m.role.name,
-    formatDate(m.joinedAt),
+    m.user.firstName, m.user.lastName, m.user.email,
+    m.role.name, formatDate(m.joinedAt),
   ]);
-  const csv = [header, ...rows]
-    .map((row) => row.map((c) => `"${c}"`).join(','))
-    .join('\n');
+  const csv = [header, ...rows].map((r) => r.map((c) => `"${c}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -158,55 +168,69 @@ type ViewMode = 'table' | 'card';
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MembersPage() {
+  const router = useRouter();
   const { currentOrgId } = useAuthStore();
   const orgId = currentOrgId ?? 0;
 
   const { data: members, isLoading: membersLoading } = useOrgMembers(orgId);
   const { data: roles } = useOrgRoles(orgId);
-  const { data: invitations, isLoading: invitationsLoading } =
-    usePendingInvitations(orgId);
+  const { data: invitations, isLoading: invitationsLoading } = usePendingInvitations(orgId);
+  const { data: notifConfig } = useNotificationConfig(orgId);
 
-  const inviteMember = useInviteMember(orgId);
-  const createMemberMutation = useCreateMember(orgId);
-  const removeMember = useRemoveMember(orgId);
-  const updateMemberRole = useUpdateMemberRole(orgId);
+  const inviteMember    = useInviteMember(orgId);
+  const createMemberMut = useCreateMember(orgId);
+  const removeMember    = useRemoveMember(orgId);
+  const updateRole      = useUpdateMemberRole(orgId);
   const cancelInvitation = useCancelInvitation(orgId);
 
-  // View & sort
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const [sortKey, setSortKey] = useState<SortKey>('name');
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  // ── Email configured check ──────────────────────────────────────────────────
+  const isEmailConfigured =
+    !!(notifConfig?.email?.enabled && notifConfig?.email?.smtpHost);
 
-  // Search / filter
-  const [search, setSearch] = useState('');
+  // ── View & sort ─────────────────────────────────────────────────────────────
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [sortKey, setSortKey]   = useState<SortKey>('name');
+  const [sortDir, setSortDir]   = useState<SortDir>('asc');
+
+  // ── Search / filter ─────────────────────────────────────────────────────────
+  const [search, setSearch]       = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
 
-  // Multi-select
+  // ── Multi-select ────────────────────────────────────────────────────────────
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [bulkRoleId, setBulkRoleId] = useState('');
 
-  // Invite dialog
+  // ── Delete confirmation ──────────────────────────────────────────────────────
+  const [memberToDelete, setMemberToDelete] = useState<{
+    id: number; email: string; name: string;
+  } | null>(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+
+  // Bulk delete
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleteInput, setBulkDeleteInput] = useState('');
+
+  // ── Notification warning ─────────────────────────────────────────────────────
+  const [notifWarningOpen, setNotifWarningOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'invite' | 'create' | null>(null);
+
+  // ── Invite dialog ────────────────────────────────────────────────────────────
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRoleId, setInviteRoleId] = useState('');
 
-  // Create dialog
-  const [createOpen, setCreateOpen] = useState(false);
+  // ── Create drawer ────────────────────────────────────────────────────────────
+  const [createOpen, setCreateOpen]         = useState(false);
   const [createFirstName, setCreateFirstName] = useState('');
-  const [createLastName, setCreateLastName] = useState('');
-  const [createEmail, setCreateEmail] = useState('');
-  const [createPassword, setCreatePassword] = useState('');
-  const [createRoleId, setCreateRoleId] = useState('');
+  const [createLastName, setCreateLastName]   = useState('');
+  const [createEmail, setCreateEmail]         = useState('');
+  const [createPassword, setCreatePassword]   = useState('');
+  const [createRoleId, setCreateRoleId]       = useState('');
   const [showCreatePassword, setShowCreatePassword] = useState(false);
 
-  // ── Sort toggle ─────────────────────────────────────────────────────────────
+  // ── Sort helper ──────────────────────────────────────────────────────────────
   const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(key);
-      setSortDir('asc');
-    }
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir('asc'); }
   };
 
   const SortIcon = ({ col }: { col: SortKey }) => {
@@ -216,74 +240,53 @@ export default function MembersPage() {
       : <ArrowDown className="size-3 ml-1" />;
   };
 
-  // ── Filtered & sorted members ───────────────────────────────────────────────
+  // ── Filtered & sorted ────────────────────────────────────────────────────────
   const filteredMembers = useMemo(() => {
     if (!members) return [];
     const filtered = members.filter((m) => {
       const fullName = `${m.user.firstName} ${m.user.lastName}`.toLowerCase();
-      const matchesSearch =
-        !search ||
+      const matchSearch = !search ||
         fullName.includes(search.toLowerCase()) ||
         m.user.email.toLowerCase().includes(search.toLowerCase());
-      const matchesRole =
-        roleFilter === 'all' || String(m.role.id) === roleFilter;
-      return matchesSearch && matchesRole;
+      const matchRole = roleFilter === 'all' || String(m.role.id) === roleFilter;
+      return matchSearch && matchRole;
     });
-
     return [...filtered].sort((a, b) => {
       let cmp = 0;
-      if (sortKey === 'name') {
-        cmp = `${a.user.firstName} ${a.user.lastName}`.localeCompare(
-          `${b.user.firstName} ${b.user.lastName}`,
-        );
-      } else if (sortKey === 'role') {
-        cmp = a.role.name.localeCompare(b.role.name);
-      } else {
-        cmp = new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime();
-      }
+      if (sortKey === 'name') cmp = `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`);
+      else if (sortKey === 'role') cmp = a.role.name.localeCompare(b.role.name);
+      else cmp = new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime();
       return sortDir === 'asc' ? cmp : -cmp;
     });
   }, [members, search, roleFilter, sortKey, sortDir]);
 
-  // ── Selection helpers ───────────────────────────────────────────────────────
-  const allSelected =
-    filteredMembers.length > 0 &&
-    filteredMembers.every((m) => selected.has(m.id));
+  // ── Selection ────────────────────────────────────────────────────────────────
+  const allSelected = filteredMembers.length > 0 && filteredMembers.every((m) => selected.has(m.id));
   const someSelected = selected.size > 0;
-
   const toggleAll = useCallback(() => {
-    if (allSelected) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(filteredMembers.map((m) => m.id)));
-    }
+    setSelected(allSelected ? new Set() : new Set(filteredMembers.map((m) => m.id)));
   }, [allSelected, filteredMembers]);
-
   const toggleOne = useCallback((id: number) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   }, []);
-
   const clearSelection = () => setSelected(new Set());
 
-  const handleBulkRemove = () => {
-    selected.forEach((id) => removeMember.mutate(id));
-    clearSelection();
+  // ── Notification gate ─────────────────────────────────────────────────────────
+  const openWithNotifCheck = (action: 'invite' | 'create') => {
+    if (!isEmailConfigured) {
+      setPendingAction(action);
+      setNotifWarningOpen(true);
+      return;
+    }
+    if (action === 'invite') setInviteOpen(true);
+    else setCreateOpen(true);
   };
 
-  const handleBulkRoleChange = (roleId: string) => {
-    selected.forEach((memberId) =>
-      updateMemberRole.mutate({ memberId, roleId: Number(roleId) }),
-    );
-    clearSelection();
-    setBulkRoleId('');
-  };
-
-  // ── Invite handler ──────────────────────────────────────────────────────────
+  // ── Invite submit ─────────────────────────────────────────────────────────────
   const handleInvite = (e: { preventDefault(): void }) => {
     e.preventDefault();
     if (!inviteEmail || !inviteRoleId) return;
@@ -299,11 +302,11 @@ export default function MembersPage() {
     );
   };
 
-  // ── Create handler ──────────────────────────────────────────────────────────
+  // ── Create submit ─────────────────────────────────────────────────────────────
   const handleCreate = (e: { preventDefault(): void }) => {
     e.preventDefault();
     if (!createFirstName || !createLastName || !createEmail || !createPassword || !createRoleId) return;
-    createMemberMutation.mutate(
+    createMemberMut.mutate(
       {
         firstName: createFirstName,
         lastName: createLastName,
@@ -324,83 +327,83 @@ export default function MembersPage() {
     );
   };
 
-  // ── Loading state ───────────────────────────────────────────────────────────
+  // ── Delete single ──────────────────────────────────────────────────────────────
+  const confirmDelete = () => {
+    if (!memberToDelete || deleteConfirmInput !== memberToDelete.email) return;
+    removeMember.mutate(memberToDelete.id, {
+      onSuccess: () => {
+        setMemberToDelete(null);
+        setDeleteConfirmInput('');
+      },
+    });
+  };
+
+  // ── Bulk delete ────────────────────────────────────────────────────────────────
+  const confirmBulkDelete = () => {
+    if (bulkDeleteInput.toLowerCase() !== 'eliminar') return;
+    selected.forEach((id) => removeMember.mutate(id));
+    clearSelection();
+    setBulkDeleteOpen(false);
+    setBulkDeleteInput('');
+  };
+
+  // ── Role change ────────────────────────────────────────────────────────────────
+  const handleRoleChange = (memberId: number, roleId: number) => {
+    updateRole.mutate({ memberId, roleId });
+  };
+
+  // ── Bulk role change ───────────────────────────────────────────────────────────
+  const handleBulkRoleChange = (roleId: string) => {
+    selected.forEach((memberId) => updateRole.mutate({ memberId, roleId: Number(roleId) }));
+    clearSelection();
+  };
+
+  // ── Loading ────────────────────────────────────────────────────────────────────
   if (membersLoading) {
     return (
       <div className="space-y-8 pb-24">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-xl" />
-          ))}
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
         </div>
         <div className="border-b pb-6 space-y-2">
           <Skeleton className="h-7 w-32" />
           <Skeleton className="h-4 w-72" />
         </div>
         <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full rounded-xl" />
-          ))}
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
         </div>
       </div>
     );
   }
 
-  // ── Metrics ─────────────────────────────────────────────────────────────────
-  const memberCount = members?.length ?? 0;
+  const memberCount     = members?.length ?? 0;
   const invitationCount = invitations?.length ?? 0;
-  const newThisMonth = members?.filter((m) => isNewThisMonth(m.joinedAt)).length ?? 0;
-  const uniqueRoles = new Set(members?.map((m) => m.role.id)).size;
+  const newThisMonth    = members?.filter((m) => isNewThisMonth(m.joinedAt)).length ?? 0;
+  const uniqueRoles     = new Set(members?.map((m) => m.role.id)).size;
 
   const stats = [
-    {
-      label: 'Total miembros',
-      value: memberCount,
-      icon: Users,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50 dark:bg-blue-950',
-    },
-    {
-      label: 'Nuevos este mes',
-      value: newThisMonth,
-      icon: TrendingUp,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-50 dark:bg-emerald-950',
-    },
-    {
-      label: 'Invit. pendientes',
-      value: invitationCount,
-      icon: UserCheck,
-      color: 'text-amber-600',
-      bg: 'bg-amber-50 dark:bg-amber-950',
-    },
-    {
-      label: 'Roles activos',
-      value: uniqueRoles,
-      icon: Shield,
-      color: 'text-violet-600',
-      bg: 'bg-violet-50 dark:bg-violet-950',
-    },
+    { label: 'Total miembros',    value: memberCount,     icon: Users,     color: 'text-blue-600',   bg: 'bg-blue-50 dark:bg-blue-950'     },
+    { label: 'Nuevos este mes',   value: newThisMonth,    icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950' },
+    { label: 'Invit. pendientes', value: invitationCount, icon: UserCheck, color: 'text-amber-600',  bg: 'bg-amber-50 dark:bg-amber-950'   },
+    { label: 'Roles activos',     value: uniqueRoles,     icon: Shield,    color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-950'  },
   ];
 
   return (
     <TooltipProvider>
       <div className="space-y-0 pb-24">
 
-        {/* ── Metrics row ─────────────────────────────────────────────────── */}
+        {/* ── Metrics ─────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat) => (
-            <Card key={stat.label} className="shadow-sm bg-white dark:bg-card">
+          {stats.map((s) => (
+            <Card key={s.label} className="shadow-sm bg-white dark:bg-card">
               <CardContent className="pt-5 pb-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-xs text-muted-foreground font-medium mb-1">
-                      {stat.label}
-                    </p>
-                    <p className="text-2xl font-bold tracking-tight">{stat.value}</p>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">{s.label}</p>
+                    <p className="text-2xl font-bold tracking-tight">{s.value}</p>
                   </div>
-                  <div className={`flex size-9 items-center justify-center rounded-lg ${stat.bg}`}>
-                    <stat.icon className={`size-4 ${stat.color}`} />
+                  <div className={`flex size-9 items-center justify-center rounded-lg ${s.bg}`}>
+                    <s.icon className={`size-4 ${s.color}`} />
                   </div>
                 </div>
               </CardContent>
@@ -416,7 +419,6 @@ export default function MembersPage() {
               Gestiona los miembros de tu organizacion y sus roles.
             </p>
           </div>
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button className="shrink-0">
@@ -426,7 +428,7 @@ export default function MembersPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem onClick={() => setInviteOpen(true)}>
+              <DropdownMenuItem onClick={() => openWithNotifCheck('invite')}>
                 <Mail className="size-4" />
                 <div>
                   <p className="text-sm font-medium">Invitar por correo</p>
@@ -434,7 +436,7 @@ export default function MembersPage() {
                 </div>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setCreateOpen(true)}>
+              <DropdownMenuItem onClick={() => openWithNotifCheck('create')}>
                 <UserRoundPlus className="size-4" />
                 <div>
                   <p className="text-sm font-medium">Crear persona</p>
@@ -447,7 +449,6 @@ export default function MembersPage() {
 
         {/* ── Toolbar ─────────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-3 mb-4">
-          {/* Search */}
           <div className="relative flex-1 min-w-48 max-w-sm">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -457,16 +458,11 @@ export default function MembersPage() {
               className="pl-9"
             />
             {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                 <X className="size-3.5" />
               </button>
             )}
           </div>
-
-          {/* Role filter */}
           <Select value={roleFilter} onValueChange={setRoleFilter}>
             <SelectTrigger className="w-44">
               <SelectValue placeholder="Todos los roles" />
@@ -474,14 +470,11 @@ export default function MembersPage() {
             <SelectContent>
               <SelectItem value="all">Todos los roles</SelectItem>
               {roles?.map((role) => (
-                <SelectItem key={role.id} value={String(role.id)}>
-                  {role.name}
-                </SelectItem>
+                <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          {/* Sort (table only) */}
           {viewMode === 'table' && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -491,26 +484,16 @@ export default function MembersPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
-                  Ordenar por
-                </DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Ordenar por</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {([
-                  { key: 'name', label: 'Nombre' },
-                  { key: 'role', label: 'Rol' },
+                  { key: 'name',   label: 'Nombre'           },
+                  { key: 'role',   label: 'Rol'              },
                   { key: 'joined', label: 'Fecha de ingreso' },
                 ] as { key: SortKey; label: string }[]).map((opt) => (
-                  <DropdownMenuItem
-                    key={opt.key}
-                    onClick={() => handleSort(opt.key)}
-                    className="flex items-center justify-between"
-                  >
+                  <DropdownMenuItem key={opt.key} onClick={() => handleSort(opt.key)} className="flex items-center justify-between">
                     {opt.label}
-                    {sortKey === opt.key && (
-                      sortDir === 'asc'
-                        ? <ArrowUp className="size-3.5" />
-                        : <ArrowDown className="size-3.5" />
-                    )}
+                    {sortKey === opt.key && (sortDir === 'asc' ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />)}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -518,34 +501,18 @@ export default function MembersPage() {
           )}
 
           <div className="ml-auto flex items-center gap-2">
-            {/* Export */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-9"
-                  onClick={() => exportToCsv(filteredMembers)}
-                  disabled={filteredMembers.length === 0}
-                >
+                <Button variant="outline" size="icon" className="size-9" onClick={() => exportToCsv(filteredMembers)} disabled={filteredMembers.length === 0}>
                   <Download className="size-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Exportar CSV</TooltipContent>
             </Tooltip>
-
-            {/* View toggle */}
             <div className="flex items-center rounded-md border bg-muted/40 p-0.5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setViewMode('table')}
-                    className={`flex size-7 items-center justify-center rounded transition-colors ${
-                      viewMode === 'table'
-                        ? 'bg-background shadow-sm text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
+                  <button onClick={() => setViewMode('table')} className={`flex size-7 items-center justify-center rounded transition-colors ${viewMode === 'table' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
                     <LayoutList className="size-3.5" />
                   </button>
                 </TooltipTrigger>
@@ -553,14 +520,7 @@ export default function MembersPage() {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setViewMode('card')}
-                    className={`flex size-7 items-center justify-center rounded transition-colors ${
-                      viewMode === 'card'
-                        ? 'bg-background shadow-sm text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
+                  <button onClick={() => setViewMode('card')} className={`flex size-7 items-center justify-center rounded transition-colors ${viewMode === 'card' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
                     <LayoutGrid className="size-3.5" />
                   </button>
                 </TooltipTrigger>
@@ -577,31 +537,21 @@ export default function MembersPage() {
               {selected.size} seleccionado{selected.size !== 1 ? 's' : ''}
             </span>
             <Separator orientation="vertical" className="h-4" />
-            <Select value={bulkRoleId} onValueChange={handleBulkRoleChange}>
+            <Select onValueChange={handleBulkRoleChange}>
               <SelectTrigger className="h-7 w-44 text-xs">
                 <SelectValue placeholder="Cambiar rol..." />
               </SelectTrigger>
               <SelectContent>
                 {roles?.map((role) => (
-                  <SelectItem key={role.id} value={String(role.id)}>
-                    {role.name}
-                  </SelectItem>
+                  <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Button
-              variant="destructive"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={handleBulkRemove}
-            >
+            <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={() => setBulkDeleteOpen(true)}>
               <Trash2 className="size-3.5" />
               Eliminar ({selected.size})
             </Button>
-            <button
-              onClick={clearSelection}
-              className="ml-auto text-muted-foreground hover:text-foreground"
-            >
+            <button onClick={clearSelection} className="ml-auto text-muted-foreground hover:text-foreground">
               <X className="size-4" />
             </button>
           </div>
@@ -611,50 +561,35 @@ export default function MembersPage() {
         {viewMode === 'table' && (
           <Card className="shadow-sm bg-white dark:bg-card">
             <CardHeader className="pb-0">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold">
-                  Miembros activos
-                  <span className="ml-2 font-normal text-muted-foreground">
-                    {filteredMembers.length !== memberCount
-                      ? `(${filteredMembers.length} de ${memberCount})`
-                      : `(${memberCount})`}
-                  </span>
-                </CardTitle>
-              </div>
+              <CardTitle className="text-sm font-semibold">
+                Miembros activos
+                <span className="ml-2 font-normal text-muted-foreground">
+                  {filteredMembers.length !== memberCount
+                    ? `(${filteredMembers.length} de ${memberCount})`
+                    : `(${memberCount})`}
+                </span>
+              </CardTitle>
             </CardHeader>
             <CardContent className="pt-4 px-0 pb-0">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-10 pl-6">
-                      <Checkbox
-                        checked={allSelected}
-                        onCheckedChange={toggleAll}
-                        aria-label="Seleccionar todos"
-                      />
+                      <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Seleccionar todos" />
                     </TableHead>
                     <TableHead>
-                      <button
-                        className="flex items-center text-xs font-medium hover:text-foreground"
-                        onClick={() => handleSort('name')}
-                      >
+                      <button className="flex items-center text-xs font-medium hover:text-foreground" onClick={() => handleSort('name')}>
                         Miembro <SortIcon col="name" />
                       </button>
                     </TableHead>
                     <TableHead className="w-44">
-                      <button
-                        className="flex items-center text-xs font-medium hover:text-foreground"
-                        onClick={() => handleSort('role')}
-                      >
+                      <button className="flex items-center text-xs font-medium hover:text-foreground" onClick={() => handleSort('role')}>
                         Rol <SortIcon col="role" />
                       </button>
                     </TableHead>
                     <TableHead className="w-28">Estado</TableHead>
                     <TableHead className="w-36">
-                      <button
-                        className="flex items-center text-xs font-medium hover:text-foreground"
-                        onClick={() => handleSort('joined')}
-                      >
+                      <button className="flex items-center text-xs font-medium hover:text-foreground" onClick={() => handleSort('joined')}>
                         Se unio <SortIcon col="joined" />
                       </button>
                     </TableHead>
@@ -663,21 +598,13 @@ export default function MembersPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredMembers.map((member) => {
-                    const fullName = `${member.user.firstName} ${member.user.lastName}`;
+                    const fullName  = `${member.user.firstName} ${member.user.lastName}`;
                     const colorClass = getAvatarColor(fullName);
-                    const isChecked = selected.has(member.id);
+                    const isChecked  = selected.has(member.id);
                     return (
-                      <TableRow
-                        key={member.id}
-                        data-state={isChecked ? 'selected' : undefined}
-                        className={isChecked ? 'bg-muted/40' : undefined}
-                      >
+                      <TableRow key={member.id} data-state={isChecked ? 'selected' : undefined} className={isChecked ? 'bg-muted/40' : undefined}>
                         <TableCell className="pl-6">
-                          <Checkbox
-                            checked={isChecked}
-                            onCheckedChange={() => toggleOne(member.id)}
-                            aria-label={`Seleccionar ${fullName}`}
-                          />
+                          <Checkbox checked={isChecked} onCheckedChange={() => toggleOne(member.id)} aria-label={`Seleccionar ${fullName}`} />
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -688,33 +615,22 @@ export default function MembersPage() {
                               </AvatarFallback>
                             </Avatar>
                             <div className="min-w-0">
-                              <div className="font-medium text-sm leading-none truncate">
-                                {fullName}
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-0.5 truncate">
-                                {member.user.email}
-                              </div>
+                              <div className="font-medium text-sm leading-none truncate">{fullName}</div>
+                              <div className="text-xs text-muted-foreground mt-0.5 truncate">{member.user.email}</div>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <Select
                             value={String(member.role.id)}
-                            onValueChange={(val) =>
-                              updateMemberRole.mutate({
-                                memberId: member.id,
-                                roleId: Number(val),
-                              })
-                            }
+                            onValueChange={(val) => handleRoleChange(member.id, Number(val))}
                           >
                             <SelectTrigger className="h-7 text-xs w-36 bg-transparent">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               {roles?.map((role) => (
-                                <SelectItem key={role.id} value={String(role.id)}>
-                                  {role.name}
-                                </SelectItem>
+                                <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -738,7 +654,7 @@ export default function MembersPage() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
-                                onClick={() => removeMember.mutate(member.id)}
+                                onClick={() => setMemberToDelete({ id: member.id, email: member.user.email, name: fullName })}
                               >
                                 <Trash2 className="size-4" />
                                 Eliminar miembro
@@ -749,22 +665,16 @@ export default function MembersPage() {
                       </TableRow>
                     );
                   })}
-
                   {filteredMembers.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={6} className="py-16 text-center">
                         <div className="flex flex-col items-center gap-2">
                           <Users className="size-10 text-muted-foreground/30" />
                           <p className="text-sm font-medium text-muted-foreground">
-                            {search || roleFilter !== 'all'
-                              ? 'No se encontraron miembros'
-                              : 'No hay miembros'}
+                            {search || roleFilter !== 'all' ? 'No se encontraron miembros' : 'No hay miembros'}
                           </p>
                           {(search || roleFilter !== 'all') && (
-                            <button
-                              onClick={() => { setSearch(''); setRoleFilter('all'); }}
-                              className="text-xs text-primary hover:underline"
-                            >
+                            <button onClick={() => { setSearch(''); setRoleFilter('all'); }} className="text-xs text-primary hover:underline">
                               Limpiar filtros
                             </button>
                           )}
@@ -780,121 +690,93 @@ export default function MembersPage() {
 
         {/* ── Card view ───────────────────────────────────────────────────── */}
         {viewMode === 'card' && (
-          <>
-            {filteredMembers.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16">
-                <Users className="size-10 text-muted-foreground/30" />
-                <p className="text-sm font-medium text-muted-foreground">
-                  {search || roleFilter !== 'all'
-                    ? 'No se encontraron miembros'
-                    : 'No hay miembros'}
-                </p>
-                {(search || roleFilter !== 'all') && (
-                  <button
-                    onClick={() => { setSearch(''); setRoleFilter('all'); }}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Limpiar filtros
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredMembers.map((member) => {
-                  const fullName = `${member.user.firstName} ${member.user.lastName}`;
-                  const colorClass = getAvatarColor(fullName);
-                  const isChecked = selected.has(member.id);
-                  return (
-                    <Card
-                      key={member.id}
-                      className={`shadow-sm bg-white dark:bg-card transition-colors ${
-                        isChecked ? 'ring-2 ring-primary' : ''
-                      }`}
-                    >
-                      <CardContent className="pt-5 pb-4">
-                        <div className="flex items-start gap-3">
-                          <Checkbox
-                            checked={isChecked}
-                            onCheckedChange={() => toggleOne(member.id)}
-                            className="mt-0.5"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3 mb-3">
-                              <Avatar className="size-10 shrink-0">
-                                <AvatarImage src={member.user.avatarUrl ?? undefined} />
-                                <AvatarFallback className={`text-sm text-white font-medium ${colorClass}`}>
-                                  {getInitials(member.user.firstName, member.user.lastName)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold truncate">{fullName}</p>
-                                <p className="text-xs text-muted-foreground truncate">{member.user.email}</p>
-                              </div>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon-xs" className="shrink-0">
-                                    <MoreHorizontal className="size-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    className="text-destructive focus:text-destructive"
-                                    onClick={() => removeMember.mutate(member.id)}
-                                  >
-                                    <Trash2 className="size-4" />
-                                    Eliminar miembro
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+          filteredMembers.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16">
+              <Users className="size-10 text-muted-foreground/30" />
+              <p className="text-sm font-medium text-muted-foreground">
+                {search || roleFilter !== 'all' ? 'No se encontraron miembros' : 'No hay miembros'}
+              </p>
+              {(search || roleFilter !== 'all') && (
+                <button onClick={() => { setSearch(''); setRoleFilter('all'); }} className="text-xs text-primary hover:underline">
+                  Limpiar filtros
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredMembers.map((member) => {
+                const fullName   = `${member.user.firstName} ${member.user.lastName}`;
+                const colorClass = getAvatarColor(fullName);
+                const isChecked  = selected.has(member.id);
+                return (
+                  <Card key={member.id} className={`shadow-sm bg-white dark:bg-card transition-all ${isChecked ? 'ring-2 ring-primary' : ''}`}>
+                    <CardContent className="pt-5 pb-4">
+                      <div className="flex items-start gap-3">
+                        <Checkbox checked={isChecked} onCheckedChange={() => toggleOne(member.id)} className="mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-3">
+                            <Avatar className="size-10 shrink-0">
+                              <AvatarImage src={member.user.avatarUrl ?? undefined} />
+                              <AvatarFallback className={`text-sm text-white font-medium ${colorClass}`}>
+                                {getInitials(member.user.firstName, member.user.lastName)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold truncate">{fullName}</p>
+                              <p className="text-xs text-muted-foreground truncate">{member.user.email}</p>
                             </div>
-
-                            <Separator className="mb-3" />
-
-                            <div className="space-y-2.5">
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-muted-foreground">Rol</span>
-                                <Select
-                                  value={String(member.role.id)}
-                                  onValueChange={(val) =>
-                                    updateMemberRole.mutate({
-                                      memberId: member.id,
-                                      roleId: Number(val),
-                                    })
-                                  }
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon-xs" className="shrink-0">
+                                  <MoreHorizontal className="size-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setMemberToDelete({ id: member.id, email: member.user.email, name: fullName })}
                                 >
-                                  <SelectTrigger className="h-6 text-xs w-32 border-0 bg-muted/60 px-2">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {roles?.map((role) => (
-                                      <SelectItem key={role.id} value={String(role.id)}>
-                                        {role.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                  <Trash2 className="size-4" />
+                                  Eliminar miembro
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                          <Separator className="mb-3" />
+                          <div className="space-y-2.5">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">Rol</span>
+                              <Select value={String(member.role.id)} onValueChange={(val) => handleRoleChange(member.id, Number(val))}>
+                                <SelectTrigger className="h-6 text-xs w-32 border-0 bg-muted/60 px-2">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {roles?.map((role) => (
+                                    <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">Estado</span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="size-1.5 rounded-full bg-emerald-500 block" />
+                                <span>Activo</span>
                               </div>
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-muted-foreground">Estado</span>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="size-1.5 rounded-full bg-emerald-500 block" />
-                                  <span className="text-xs">Activo</span>
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-muted-foreground">Se unio</span>
-                                <span>{formatDate(member.joinedAt)}</span>
-                              </div>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">Se unio</span>
+                              <span>{formatDate(member.joinedAt)}</span>
                             </div>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-          </>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )
         )}
 
         {/* ── Pending invitations ──────────────────────────────────────────── */}
@@ -904,21 +786,15 @@ export default function MembersPage() {
               <Clock className="size-4 text-muted-foreground" />
               <CardTitle className="text-sm font-semibold">
                 Invitaciones pendientes
-                <span className="ml-2 text-muted-foreground font-normal">
-                  ({invitationCount})
-                </span>
+                <span className="ml-2 text-muted-foreground font-normal">({invitationCount})</span>
               </CardTitle>
             </div>
-            <CardDescription>
-              Invitaciones enviadas que aun no han sido aceptadas.
-            </CardDescription>
+            <CardDescription>Invitaciones enviadas que aun no han sido aceptadas.</CardDescription>
           </CardHeader>
           <CardContent>
             {invitationsLoading ? (
               <div className="space-y-2">
-                {Array.from({ length: 2 }).map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
-                ))}
+                {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
               </div>
             ) : invitations && invitations.length > 0 ? (
               <Table>
@@ -931,39 +807,27 @@ export default function MembersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invitations.map((invitation) => (
-                    <TableRow key={invitation.id}>
+                  {invitations.map((inv) => (
+                    <TableRow key={inv.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="flex size-8 items-center justify-center rounded-full bg-muted">
                             <Mail className="size-3.5 text-muted-foreground" />
                           </div>
-                          <span className="text-sm font-medium">{invitation.email}</span>
+                          <span className="text-sm font-medium">{inv.email}</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="text-xs">
-                          {invitation.role.name}
-                        </Badge>
+                        <Badge variant="secondary" className="text-xs">{inv.role.name}</Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(invitation.invitedAt)}
+                        {formatDate(inv.invitedAt)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                onClick={() =>
-                                  inviteMember.mutate({
-                                    email: invitation.email,
-                                    roleId: invitation.role.id,
-                                  })
-                                }
-                                disabled={inviteMember.isPending}
-                              >
+                              <Button variant="ghost" size="icon-xs" onClick={() => inviteMember.mutate({ email: inv.email, roleId: inv.role.id })} disabled={inviteMember.isPending}>
                                 <RefreshCw className="size-3.5" />
                               </Button>
                             </TooltipTrigger>
@@ -971,13 +835,7 @@ export default function MembersPage() {
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                onClick={() => cancelInvitation.mutate(invitation.id)}
-                                disabled={cancelInvitation.isPending}
-                                className="text-muted-foreground hover:text-destructive"
-                              >
+                              <Button variant="ghost" size="icon-xs" onClick={() => cancelInvitation.mutate(inv.id)} disabled={cancelInvitation.isPending} className="text-muted-foreground hover:text-destructive">
                                 <X className="size-3.5" />
                               </Button>
                             </TooltipTrigger>
@@ -992,15 +850,131 @@ export default function MembersPage() {
             ) : (
               <div className="flex flex-col items-center gap-2 py-8">
                 <Mail className="size-8 text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">
-                  No hay invitaciones pendientes.
-                </p>
+                <p className="text-sm text-muted-foreground">No hay invitaciones pendientes.</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* ── Invite dialog ────────────────────────────────────────────────── */}
+        {/* ═══════════════════════════════════════════════════════════════════
+            DIALOGS & SHEETS
+        ═══════════════════════════════════════════════════════════════════ */}
+
+        {/* ── Notification not configured warning ──────────────────────────── */}
+        <AlertDialog open={notifWarningOpen} onOpenChange={setNotifWarningOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <div className="flex size-9 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950">
+                  <AlertTriangle className="size-4 text-amber-600" />
+                </div>
+                Servicio de correo no configurado
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Para {pendingAction === 'invite' ? 'enviar invitaciones' : 'crear personas'} es necesario
+                configurar el servicio de notificaciones por correo electronico.
+                Sin esto, el usuario no podra recibir su enlace de acceso.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <Button
+                onClick={() => {
+                  setNotifWarningOpen(false);
+                  router.push('/organization/notifications');
+                }}
+                className="gap-2"
+              >
+                <Settings className="size-4" />
+                Configurar correo
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* ── Delete single confirmation ────────────────────────────────────── */}
+        <AlertDialog
+          open={!!memberToDelete}
+          onOpenChange={(open) => {
+            if (!open) { setMemberToDelete(null); setDeleteConfirmInput(''); }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eliminar miembro</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta accion eliminara a <strong>{memberToDelete?.name}</strong> de la organizacion.
+                Esta accion no se puede deshacer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2 py-2">
+              <Label htmlFor="delete-confirm">
+                Escribe <strong className="font-mono text-destructive">{memberToDelete?.email}</strong> para confirmar
+              </Label>
+              <Input
+                id="delete-confirm"
+                placeholder={memberToDelete?.email ?? ''}
+                value={deleteConfirmInput}
+                onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <Button
+                variant="destructive"
+                disabled={deleteConfirmInput !== memberToDelete?.email || removeMember.isPending}
+                onClick={confirmDelete}
+              >
+                {removeMember.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                Eliminar miembro
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* ── Bulk delete confirmation ──────────────────────────────────────── */}
+        <AlertDialog
+          open={bulkDeleteOpen}
+          onOpenChange={(open) => {
+            if (!open) { setBulkDeleteOpen(false); setBulkDeleteInput(''); }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eliminar {selected.size} miembros</AlertDialogTitle>
+              <AlertDialogDescription>
+                Se eliminaran {selected.size} miembro{selected.size !== 1 ? 's' : ''} de la organizacion.
+                Esta accion no se puede deshacer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2 py-2">
+              <Label htmlFor="bulk-delete-confirm">
+                Escribe <strong className="font-mono text-destructive">eliminar</strong> para confirmar
+              </Label>
+              <Input
+                id="bulk-delete-confirm"
+                placeholder="eliminar"
+                value={bulkDeleteInput}
+                onChange={(e) => setBulkDeleteInput(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <Button
+                variant="destructive"
+                disabled={bulkDeleteInput.toLowerCase() !== 'eliminar'}
+                onClick={confirmBulkDelete}
+              >
+                <Trash2 className="size-4" />
+                Eliminar {selected.size} miembro{selected.size !== 1 ? 's' : ''}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* ── Invite dialog ─────────────────────────────────────────────────── */}
         <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
           <DialogContent className="sm:max-w-md">
             <form onSubmit={handleInvite}>
@@ -1013,41 +987,24 @@ export default function MembersPage() {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="invite-email">Correo electronico</Label>
-                  <Input
-                    id="invite-email"
-                    type="email"
-                    placeholder="usuario@ejemplo.com"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    required
-                  />
+                  <Input id="invite-email" type="email" placeholder="usuario@ejemplo.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="invite-role">Rol</Label>
                   <Select value={inviteRoleId} onValueChange={setInviteRoleId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar rol" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar rol" /></SelectTrigger>
                     <SelectContent>
                       {roles?.map((role) => (
-                        <SelectItem key={role.id} value={String(role.id)}>
-                          {role.name}
-                        </SelectItem>
+                        <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>
-                  Cancelar
-                </Button>
+                <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={inviteMember.isPending || !inviteEmail || !inviteRoleId}>
-                  {inviteMember.isPending ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Mail className="size-4" />
-                  )}
+                  {inviteMember.isPending ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}
                   Enviar invitacion
                 </Button>
               </DialogFooter>
@@ -1055,52 +1012,42 @@ export default function MembersPage() {
           </DialogContent>
         </Dialog>
 
-        {/* ── Create member dialog ─────────────────────────────────────────── */}
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogContent className="sm:max-w-md">
-            <form onSubmit={handleCreate}>
-              <DialogHeader>
-                <DialogTitle>Crear persona</DialogTitle>
-                <DialogDescription>
-                  Crea una cuenta nueva y anadela directamente a la organizacion.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
+        {/* ── Create person drawer ──────────────────────────────────────────── */}
+        <Sheet open={createOpen} onOpenChange={setCreateOpen}>
+          <SheetContent side="right" className="w-full sm:max-w-lg p-0 flex flex-col">
+            <SheetHeader className="border-b px-6 py-5">
+              <SheetTitle>Crear persona</SheetTitle>
+              <SheetDescription>
+                Crea una cuenta nueva y anadela directamente a la organizacion.
+                Se enviara un correo al usuario con sus credenciales de acceso.
+              </SheetDescription>
+            </SheetHeader>
+
+            <form onSubmit={handleCreate} className="flex flex-col flex-1 min-h-0">
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                {/* Name row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label htmlFor="create-firstname">Nombre</Label>
-                    <Input
-                      id="create-firstname"
-                      placeholder="Juan"
-                      value={createFirstName}
-                      onChange={(e) => setCreateFirstName(e.target.value)}
-                      required
-                    />
+                    <Label htmlFor="create-firstname">Nombre <span className="text-destructive">*</span></Label>
+                    <Input id="create-firstname" placeholder="Juan" value={createFirstName} onChange={(e) => setCreateFirstName(e.target.value)} required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="create-lastname">Apellido</Label>
-                    <Input
-                      id="create-lastname"
-                      placeholder="Garcia"
-                      value={createLastName}
-                      onChange={(e) => setCreateLastName(e.target.value)}
-                      required
-                    />
+                    <Label htmlFor="create-lastname">Apellido <span className="text-destructive">*</span></Label>
+                    <Input id="create-lastname" placeholder="Garcia" value={createLastName} onChange={(e) => setCreateLastName(e.target.value)} required />
                   </div>
                 </div>
+
+                <Separator />
+
+                {/* Email */}
                 <div className="space-y-2">
-                  <Label htmlFor="create-email">Correo electronico</Label>
-                  <Input
-                    id="create-email"
-                    type="email"
-                    placeholder="juan@empresa.com"
-                    value={createEmail}
-                    onChange={(e) => setCreateEmail(e.target.value)}
-                    required
-                  />
+                  <Label htmlFor="create-email">Correo electronico <span className="text-destructive">*</span></Label>
+                  <Input id="create-email" type="email" placeholder="juan@empresa.com" value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} required />
                 </div>
+
+                {/* Password */}
                 <div className="space-y-2">
-                  <Label htmlFor="create-password">Contrasena temporal</Label>
+                  <Label htmlFor="create-password">Contrasena temporal <span className="text-destructive">*</span></Label>
                   <div className="relative">
                     <Input
                       id="create-password"
@@ -1111,67 +1058,54 @@ export default function MembersPage() {
                       required
                       minLength={8}
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      className="absolute right-2 top-1/2 -translate-y-1/2"
-                      onClick={() => setShowCreatePassword(!showCreatePassword)}
-                    >
-                      {showCreatePassword ? (
-                        <EyeOff className="size-4" />
-                      ) : (
-                        <Eye className="size-4" />
-                      )}
+                    <Button type="button" variant="ghost" size="icon-xs" className="absolute right-2 top-1/2 -translate-y-1/2" onClick={() => setShowCreatePassword(!showCreatePassword)}>
+                      {showCreatePassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    El usuario debera cambiar su contrasena al iniciar sesion.
-                  </p>
+                  <p className="text-xs text-muted-foreground">El usuario debera cambiar su contrasena al iniciar sesion.</p>
                 </div>
+
                 <Separator />
+
+                {/* Role */}
                 <div className="space-y-2">
-                  <Label htmlFor="create-role">Rol</Label>
+                  <Label htmlFor="create-role">Rol <span className="text-destructive">*</span></Label>
                   <Select value={createRoleId} onValueChange={setCreateRoleId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar rol" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar rol" /></SelectTrigger>
                     <SelectContent>
                       {roles?.map((role) => (
-                        <SelectItem key={role.id} value={String(role.id)}>
-                          {role.name}
-                        </SelectItem>
+                        <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">Determina los permisos de acceso del nuevo miembro.</p>
+                </div>
+
+                {/* Email notification note */}
+                <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/50 px-4 py-3 text-sm text-blue-700 dark:text-blue-300 flex items-start gap-2">
+                  <Mail className="size-4 mt-0.5 shrink-0" />
+                  <p>Se enviara un correo a <strong>{createEmail || 'la direccion indicada'}</strong> con las credenciales de acceso.</p>
                 </div>
               </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
-                  Cancelar
-                </Button>
+
+              <SheetFooter className="border-t px-6 py-4 flex-row gap-3 justify-end">
+                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
                 <Button
                   type="submit"
                   disabled={
-                    createMemberMutation.isPending ||
-                    !createFirstName ||
-                    !createLastName ||
-                    !createEmail ||
-                    !createPassword ||
-                    !createRoleId
+                    createMemberMut.isPending ||
+                    !createFirstName || !createLastName ||
+                    !createEmail || !createPassword || !createRoleId
                   }
                 >
-                  {createMemberMutation.isPending ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <UserRoundPlus className="size-4" />
-                  )}
+                  {createMemberMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <UserRoundPlus className="size-4" />}
                   Crear persona
                 </Button>
-              </DialogFooter>
+              </SheetFooter>
             </form>
-          </DialogContent>
-        </Dialog>
+          </SheetContent>
+        </Sheet>
+
       </div>
     </TooltipProvider>
   );
