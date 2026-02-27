@@ -21,7 +21,19 @@ export function ThemedToaster() {
       <SonnerToaster
         position={config.position}
         theme={resolvedThemeValue}
-        richColors
+        richColors={config.sonnerRichColors}
+        expand={config.sonnerExpand}
+        duration={config.duration ?? undefined}
+        visibleToasts={config.sonnerVisibleToasts}
+        closeButton={config.sonnerCloseButton}
+        gap={config.sonnerGap}
+        invert={config.sonnerInvert}
+        offset={{
+          top: config.offsetTop,
+          right: config.offsetRight,
+          bottom: config.offsetBottom,
+          left: config.offsetLeft,
+        }}
         toastOptions={{
           style: { borderRadius: `${config.roundness}px` },
         }}

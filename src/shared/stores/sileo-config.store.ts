@@ -26,6 +26,15 @@ export interface SileoConfig {
   offsetRight: number;
   offsetBottom: number;
   offsetLeft: number;
+  // ── Sonner-specific ──────────────────────────────────────────────────────
+  sonnerRichColors: boolean;
+  sonnerExpand: boolean;
+  sonnerVisibleToasts: number;
+  sonnerCloseButton: boolean;
+  /** Gap in px between stacked toasts (default 14). */
+  sonnerGap: number;
+  /** Invert toast colors relative to active theme. */
+  sonnerInvert: boolean;
 }
 
 const STORAGE_KEY = 'sileo-config';
@@ -40,6 +49,13 @@ export const DEFAULT_CONFIG: SileoConfig = {
   offsetRight: 16,
   offsetBottom: 16,
   offsetLeft: 16,
+  // Sonner defaults
+  sonnerRichColors: true,
+  sonnerExpand: false,
+  sonnerVisibleToasts: 3,
+  sonnerCloseButton: false,
+  sonnerGap: 14,
+  sonnerInvert: false,
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

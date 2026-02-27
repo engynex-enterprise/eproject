@@ -123,10 +123,16 @@ function SileoConfigSection() {
       : `${(config.duration / 1000).toFixed(1).replace('.0', '')} s`;
 
   const firePreview = () => {
-    sileo.success({
-      title: 'Notificacion de prueba (Sileo)',
-      description: `Posicion: ${config.position} · Duracion: ${durationLabel}`,
-    });
+    if (isSileo) {
+      sileo.success({
+        title: 'Notificacion de prueba (Sileo)',
+        description: `Posicion: ${config.position} · Duracion: ${durationLabel}`,
+      });
+    } else {
+      sonner.success('Notificacion de prueba (Sonner)', {
+        description: `Posicion: ${config.position} · Duracion: ${durationLabel}`,
+      });
+    }
   };
 
   return (
@@ -137,12 +143,10 @@ function SileoConfigSection() {
         <p className="text-sm text-muted-foreground leading-relaxed">
           Elige el sistema de notificaciones emergentes y personaliza su apariencia. Se guarda en la base de datos al pulsar "Guardar cambios".
         </p>
-        {isSileo && (
-          <Button variant="ghost" size="sm" className="mt-2 gap-1.5 text-muted-foreground" onClick={resetConfig}>
-            <RotateCcw className="size-3.5" />
-            Restablecer
-          </Button>
-        )}
+        <Button variant="ghost" size="sm" className="mt-2 gap-1.5 text-muted-foreground" onClick={resetConfig}>
+          <RotateCcw className="size-3.5" />
+          Restablecer
+        </Button>
       </div>
 
       {/* Right: cards */}
@@ -186,192 +190,253 @@ function SileoConfigSection() {
           </CardContent>
         </Card>
 
-        {/* ── Sileo-only config ─────────────────────────────────── */}
-        {isSileo && (
-          <>
-            {/* Position */}
-            <Card className="shadow-sm bg-white dark:bg-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Posicion</CardTitle>
-                <CardDescription>Esquina de la pantalla donde apareceran las alertas.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="relative mx-auto w-full max-w-xs aspect-video rounded-lg border-2 border-dashed border-border bg-muted/30 p-2">
-                  <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-muted-foreground/50 uppercase tracking-widest select-none">
-                    Pantalla
-                  </span>
-                  {POSITIONS.map((p) => {
-                    const active = config.position === p.id;
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        title={p.label}
-                        onClick={() => updateConfig({ position: p.id })}
-                        style={{
-                          position: 'absolute',
-                          top:    p.row === 0 ? '6px'  : undefined,
-                          bottom: p.row === 1 ? '6px'  : undefined,
-                          left:   p.col === 0 ? '6px'  : p.col === 1 ? '50%' : undefined,
-                          right:  p.col === 2 ? '6px'  : undefined,
-                          transform: p.col === 1 ? 'translateX(-50%)' : undefined,
-                        }}
-                        className={`w-14 rounded px-1.5 py-1 text-[9px] font-semibold leading-tight transition-all ${
-                          active
-                            ? 'bg-primary text-primary-foreground shadow-md scale-105'
-                            : 'bg-background/80 text-muted-foreground border border-border hover:bg-muted hover:text-foreground'
-                        }`}
-                      >
-                        {p.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Theme */}
-            <Card className="shadow-sm bg-white dark:bg-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Tema de las alertas</CardTitle>
-                <CardDescription>Color de fondo de los toasts independiente del tema de la app.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {THEMES.map((t) => {
-                    const active = config.theme === t.id;
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => updateConfig({ theme: t.id })}
-                        className={`flex items-start gap-2.5 rounded-xl border p-3.5 text-left transition-all ${
-                          active
-                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                            : 'border-border bg-white dark:bg-card hover:border-muted-foreground/30 hover:bg-muted/20'
-                        }`}
-                      >
-                        <div className={`mt-0.5 flex size-3.5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${active ? 'border-primary' : 'border-muted-foreground/40'}`}>
-                          {active && <span className="size-1.5 rounded-full bg-primary block" />}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium leading-tight">{t.label}</p>
-                          <p className="mt-0.5 text-xs text-muted-foreground leading-snug">{t.description}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Duration + Roundness */}
-            <Card className="shadow-sm bg-white dark:bg-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Comportamiento</CardTitle>
-                <CardDescription>Tiempo en pantalla y radio de los bordes.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm">Duracion</Label>
-                    <span className="text-sm font-semibold tabular-nums text-primary min-w-[3rem] text-right">{durationLabel}</span>
-                  </div>
-                  <Slider
-                    min={0} max={16} step={1}
-                    value={[config.duration === null ? 16 : Math.round(config.duration / 1000)]}
-                    onValueChange={([v]) => updateConfig({ duration: v === 16 ? null : v * 1000 })}
-                  />
-                  <div className="flex justify-between text-[10px] text-muted-foreground">
-                    <span>0 s</span><span>8 s</span><span>Nunca</span>
-                  </div>
-                </div>
-                <Separator />
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm">Redondez</Label>
-                    <span className="text-sm font-semibold tabular-nums text-primary min-w-[3rem] text-right">{config.roundness} px</span>
-                  </div>
-                  <Slider
-                    min={0} max={24} step={1}
-                    value={[config.roundness]}
-                    onValueChange={([v]) => updateConfig({ roundness: v })}
-                  />
-                  <div className="flex justify-between text-[10px] text-muted-foreground">
-                    <span>Cuadrado</span><span>Redondeado</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Offset */}
-            <Card className="shadow-sm bg-white dark:bg-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Desplazamiento</CardTitle>
-                <CardDescription>Distancia en pixeles desde cada borde de la pantalla.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  {(
-                    [
-                      { key: 'offsetTop',    label: 'Arriba' },
-                      { key: 'offsetRight',  label: 'Derecha' },
-                      { key: 'offsetBottom', label: 'Abajo' },
-                      { key: 'offsetLeft',   label: 'Izquierda' },
-                    ] as const
-                  ).map(({ key, label }) => (
-                    <div key={key} className="space-y-2">
-                      <Label htmlFor={key} className="text-xs text-muted-foreground">{label}</Label>
-                      <div className="relative">
-                        <Input
-                          id={key} type="number" min={0} max={200}
-                          value={config[key]}
-                          onChange={(e) => updateConfig({ [key]: Math.max(0, Number(e.target.value)) })}
-                          className="pr-7 text-sm"
-                        />
-                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">px</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Preview */}
-            <div className="flex justify-end">
-              <Button variant="outline" onClick={firePreview} className="gap-2">
-                <Sparkles className="size-4" />
-                Probar notificacion
-              </Button>
+        {/* ── Shared: Position ──────────────────────────────────── */}
+        <Card className="shadow-sm bg-white dark:bg-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Posicion</CardTitle>
+            <CardDescription>Esquina de la pantalla donde apareceran las alertas.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="relative mx-auto w-full max-w-xs aspect-video rounded-lg border-2 border-dashed border-border bg-muted/30 p-2">
+              <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-muted-foreground/50 uppercase tracking-widest select-none">
+                Pantalla
+              </span>
+              {POSITIONS.map((p) => {
+                const active = config.position === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    title={p.label}
+                    onClick={() => updateConfig({ position: p.id })}
+                    style={{
+                      position: 'absolute',
+                      top:    p.row === 0 ? '6px'  : undefined,
+                      bottom: p.row === 1 ? '6px'  : undefined,
+                      left:   p.col === 0 ? '6px'  : p.col === 1 ? '50%' : undefined,
+                      right:  p.col === 2 ? '6px'  : undefined,
+                      transform: p.col === 1 ? 'translateX(-50%)' : undefined,
+                    }}
+                    className={`w-14 rounded px-1.5 py-1 text-[9px] font-semibold leading-tight transition-all ${
+                      active
+                        ? 'bg-primary text-primary-foreground shadow-md scale-105'
+                        : 'bg-background/80 text-muted-foreground border border-border hover:bg-muted hover:text-foreground'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
             </div>
-          </>
-        )}
+          </CardContent>
+        </Card>
 
-        {/* ── Shadcn info ───────────────────────────────────────── */}
+        {/* ── Shared: Theme ─────────────────────────────────────── */}
+        <Card className="shadow-sm bg-white dark:bg-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Tema de las alertas</CardTitle>
+            <CardDescription>Color de fondo de los toasts independiente del tema de la app.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {THEMES.map((t) => {
+                const active = config.theme === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => updateConfig({ theme: t.id })}
+                    className={`flex items-start gap-2.5 rounded-xl border p-3.5 text-left transition-all ${
+                      active
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                        : 'border-border bg-white dark:bg-card hover:border-muted-foreground/30 hover:bg-muted/20'
+                    }`}
+                  >
+                    <div className={`mt-0.5 flex size-3.5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${active ? 'border-primary' : 'border-muted-foreground/40'}`}>
+                      {active && <span className="size-1.5 rounded-full bg-primary block" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium leading-tight">{t.label}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground leading-snug">{t.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Shared: Duration + Roundness ──────────────────────── */}
+        <Card className="shadow-sm bg-white dark:bg-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Comportamiento</CardTitle>
+            <CardDescription>Tiempo en pantalla y radio de los bordes.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Duracion</Label>
+                <span className="text-sm font-semibold tabular-nums text-primary min-w-[3rem] text-right">{durationLabel}</span>
+              </div>
+              <Slider
+                min={0} max={16} step={1}
+                value={[config.duration === null ? 16 : Math.round(config.duration / 1000)]}
+                onValueChange={([v]) => updateConfig({ duration: v === 16 ? null : v * 1000 })}
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>0 s</span><span>8 s</span><span>Nunca</span>
+              </div>
+            </div>
+            <Separator />
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Redondez</Label>
+                <span className="text-sm font-semibold tabular-nums text-primary min-w-[3rem] text-right">{config.roundness} px</span>
+              </div>
+              <Slider
+                min={0} max={24} step={1}
+                value={[config.roundness]}
+                onValueChange={([v]) => updateConfig({ roundness: v })}
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>Cuadrado</span><span>Redondeado</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Shared: Offset ────────────────────────────────────── */}
+        <Card className="shadow-sm bg-white dark:bg-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Desplazamiento</CardTitle>
+            <CardDescription>Distancia en pixeles desde cada borde de la pantalla.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {(
+                [
+                  { key: 'offsetTop',    label: 'Arriba' },
+                  { key: 'offsetRight',  label: 'Derecha' },
+                  { key: 'offsetBottom', label: 'Abajo' },
+                  { key: 'offsetLeft',   label: 'Izquierda' },
+                ] as const
+              ).map(({ key, label }) => (
+                <div key={key} className="space-y-2">
+                  <Label htmlFor={key} className="text-xs text-muted-foreground">{label}</Label>
+                  <div className="relative">
+                    <Input
+                      id={key} type="number" min={0} max={200}
+                      value={config[key]}
+                      onChange={(e) => updateConfig({ [key]: Math.max(0, Number(e.target.value)) })}
+                      className="pr-7 text-sm"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">px</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Sonner-only options ───────────────────────────────── */}
         {!isSileo && (
-          <Card className="shadow-sm bg-white dark:bg-card border-dashed">
-            <CardContent className="pt-5 pb-4 space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Sonner usa la posicion, tema y redondez configurados arriba cuando esten disponibles.
-                Para opciones avanzadas de Sonner visita su documentacion oficial.
-              </p>
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  className="gap-2"
-                  onClick={() =>
-                    sonner.success('Notificacion de prueba (Sonner)', {
-                      description: 'El sistema de alertas esta funcionando correctamente.',
-                    })
-                  }
-                >
-                  <Sparkles className="size-4" />
-                  Probar notificacion
-                </Button>
+          <Card className="shadow-sm bg-white dark:bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Opciones de Sonner</CardTitle>
+              <CardDescription>Comportamiento especifico del proveedor Shadcn / Sonner.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-0 divide-y divide-border">
+              {/* Rich Colors */}
+              <div className="flex items-center justify-between py-3.5">
+                <div>
+                  <p className="text-sm font-medium">Colores enriquecidos</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Aplica colores semanticos a los toasts (verde exito, rojo error, etc.)</p>
+                </div>
+                <Switch
+                  checked={config.sonnerRichColors}
+                  onCheckedChange={(v) => updateConfig({ sonnerRichColors: v })}
+                />
+              </div>
+              {/* Expand */}
+              <div className="flex items-center justify-between py-3.5">
+                <div>
+                  <p className="text-sm font-medium">Expandir toasts</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Muestra todos los toasts apilados en lugar de colapsarlos.</p>
+                </div>
+                <Switch
+                  checked={config.sonnerExpand}
+                  onCheckedChange={(v) => updateConfig({ sonnerExpand: v })}
+                />
+              </div>
+              {/* Close button */}
+              <div className="flex items-center justify-between py-3.5">
+                <div>
+                  <p className="text-sm font-medium">Boton de cierre</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Muestra un boton X en cada toast para cerrarlo manualmente.</p>
+                </div>
+                <Switch
+                  checked={config.sonnerCloseButton}
+                  onCheckedChange={(v) => updateConfig({ sonnerCloseButton: v })}
+                />
+              </div>
+              {/* Invert */}
+              <div className="flex items-center justify-between py-3.5">
+                <div>
+                  <p className="text-sm font-medium">Invertir colores</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Invierte el esquema de colores del toast respecto al tema activo.</p>
+                </div>
+                <Switch
+                  checked={config.sonnerInvert}
+                  onCheckedChange={(v) => updateConfig({ sonnerInvert: v })}
+                />
+              </div>
+              {/* Visible toasts */}
+              <div className="space-y-3 py-3.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Toasts visibles</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Numero maximo de toasts mostrados a la vez.</p>
+                  </div>
+                  <span className="text-sm font-semibold tabular-nums text-primary">{config.sonnerVisibleToasts}</span>
+                </div>
+                <Slider
+                  min={1} max={9} step={1}
+                  value={[config.sonnerVisibleToasts]}
+                  onValueChange={([v]) => updateConfig({ sonnerVisibleToasts: v })}
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>1</span><span>5</span><span>9</span>
+                </div>
+              </div>
+              {/* Gap */}
+              <div className="space-y-3 py-3.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Espacio entre toasts</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Separacion vertical entre notificaciones apiladas.</p>
+                  </div>
+                  <span className="text-sm font-semibold tabular-nums text-primary">{config.sonnerGap} px</span>
+                </div>
+                <Slider
+                  min={0} max={40} step={1}
+                  value={[config.sonnerGap]}
+                  onValueChange={([v]) => updateConfig({ sonnerGap: v })}
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>0 px</span><span>20 px</span><span>40 px</span>
+                </div>
               </div>
             </CardContent>
           </Card>
         )}
+
+        {/* ── Preview button ────────────────────────────────────── */}
+        <div className="flex justify-end">
+          <Button variant="outline" onClick={firePreview} className="gap-2">
+            <Sparkles className="size-4" />
+            Probar notificacion
+          </Button>
+        </div>
 
       </div>
     </div>
