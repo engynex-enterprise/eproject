@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { createElement, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   FolderKanban,
@@ -19,6 +19,7 @@ import {
   ArrowUp,
   ArrowDown,
 } from 'lucide-react';
+import { getProjectIcon } from './icon-color-picker';
 import type { ProjectListItem } from '../services/projects.service';
 import {
   Table,
@@ -262,17 +263,9 @@ export function ProjectTable({
                   <div className="flex items-center gap-2">
                     <div
                       className="flex size-6 shrink-0 items-center justify-center rounded-md text-white"
-                      style={{ backgroundColor: colors.base }}
+                      style={{ backgroundColor: project.color ?? colors.base }}
                     >
-                      {project.avatarUrl ? (
-                        <img
-                          src={project.avatarUrl}
-                          alt={project.name}
-                          className="size-3.5 rounded-sm"
-                        />
-                      ) : (
-                        <FolderKanban className="size-3" />
-                      )}
+                      {createElement(getProjectIcon(project.avatarUrl), { className: 'size-3' })}
                     </div>
                     <span className="truncate text-sm font-medium">{project.name}</span>
                     <Badge variant="secondary" className="shrink-0 text-[10px]">

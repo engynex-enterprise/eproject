@@ -1,5 +1,6 @@
 'use client';
 
+import { createElement } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   FolderKanban,
@@ -32,6 +33,7 @@ import {
   AvatarImage,
 } from '@/components/ui/avatar';
 import { useAccentColor } from '@/shared/providers/accent-color-provider';
+import { getProjectIcon } from './icon-color-picker';
 
 interface ProjectPreviewSheetProps {
   project: ProjectListItem | null;
@@ -73,16 +75,16 @@ export function ProjectPreviewSheet({
           <div className="flex items-center gap-3">
             <div
               className="flex size-10 items-center justify-center rounded-lg text-white"
-              style={{ backgroundColor: colors.base }}
+              style={{ backgroundColor: project.color ?? colors.base }}
             >
-              <FolderKanban className="size-5" />
+              {createElement(getProjectIcon(project.avatarUrl), { className: 'size-5' })}
             </div>
             <div className="min-w-0 flex-1">
               <SheetTitle className="truncate text-lg">{project.name}</SheetTitle>
               <SheetDescription className="flex items-center gap-2">
                 <Badge
                   className="text-[10px] font-semibold text-white"
-                  style={{ backgroundColor: colors.base }}
+                  style={{ backgroundColor: project.color ?? colors.base }}
                 >
                   {project.key}
                 </Badge>

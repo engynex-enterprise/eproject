@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { createElement, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   FolderKanban,
@@ -22,6 +22,7 @@ import {
   Circle,
   Layers,
 } from 'lucide-react';
+import { getProjectIcon } from './icon-color-picker';
 import type { ProjectListItem } from '../services/projects.service';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -107,15 +108,21 @@ export function ProjectCard({
         style={{ borderLeft: `4px solid ${project.healthColor}` }}
       >
         <div className="space-y-3 p-4">
-          {/* Row 1: Name (bold) + Badges + Actions */}
+          {/* Row 1: Icon + Name (bold) + Badges + Actions */}
           <div className="flex items-start gap-2">
+            <div
+              className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg text-white"
+              style={{ backgroundColor: project.color ?? colors.base }}
+            >
+              {createElement(getProjectIcon(project.avatarUrl), { className: 'size-4' })}
+            </div>
             <h3 className="min-w-0 flex-1 text-base font-bold leading-tight">
               {project.name}
             </h3>
             <div className="flex shrink-0 items-center gap-1.5">
               <Badge
                 className="text-[10px] font-semibold text-white"
-                style={{ backgroundColor: colors.base }}
+                style={{ backgroundColor: project.color ?? colors.base }}
               >
                 {project.key}
               </Badge>

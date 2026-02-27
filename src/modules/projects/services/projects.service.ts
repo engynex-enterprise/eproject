@@ -47,6 +47,7 @@ export interface ProjectListItem {
   } | null;
   issueStats: ProjectIssueStats;
   healthColor: string;
+  color: string | null;
   leadId: number | null;
 }
 
@@ -57,6 +58,7 @@ export interface CreateProjectData {
   leadId?: number;
   iconUrl?: string;
   category?: string;
+  color?: string;
 }
 
 export interface UserSearchResult {

@@ -1,23 +1,8 @@
 'use client';
 
 import { useEffect, useState, useDeferredValue } from 'react';
-import {
-  Loader2,
-  FolderKanban,
-  Search,
-  Briefcase,
-  Code2,
-  Megaphone,
-  GraduationCap,
-  Rocket,
-  Bug,
-  Palette,
-  BarChart3,
-  HeartPulse,
-  Globe,
-  ShieldCheck,
-  Layers,
-} from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
+import { IconColorPicker, getProjectIcon } from './icon-color-picker';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -44,8 +29,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { useAccentColor } from '@/shared/providers/accent-color-provider';
 import { useCreateProject, useSearchUsers } from '../hooks/use-projects';
 import type { UserSearchResult } from '../services/projects.service';
 
@@ -66,21 +49,6 @@ function generateKey(name: string): string {
     .toUpperCase();
 }
 
-const PROJECT_ICONS = [
-  { name: 'folder-kanban', icon: FolderKanban, label: 'Kanban' },
-  { name: 'briefcase', icon: Briefcase, label: 'Negocio' },
-  { name: 'code', icon: Code2, label: 'Código' },
-  { name: 'megaphone', icon: Megaphone, label: 'Marketing' },
-  { name: 'graduation', icon: GraduationCap, label: 'Educación' },
-  { name: 'rocket', icon: Rocket, label: 'Startup' },
-  { name: 'bug', icon: Bug, label: 'QA' },
-  { name: 'palette', icon: Palette, label: 'Diseño' },
-  { name: 'chart', icon: BarChart3, label: 'Analítica' },
-  { name: 'health', icon: HeartPulse, label: 'Salud' },
-  { name: 'globe', icon: Globe, label: 'Web' },
-  { name: 'shield', icon: ShieldCheck, label: 'Seguridad' },
-] as const;
-
 const PROJECT_CATEGORIES = [
   { value: 'software', label: 'Software' },
   { value: 'marketing', label: 'Marketing' },
@@ -98,14 +66,13 @@ export function CreateProjectDialog({
   onOpenChange,
   orgId,
 }: CreateProjectDialogProps) {
-  const { colors } = useAccentColor();
-
   // Form fields
   const [name, setName] = useState('');
   const [key, setKey] = useState('');
   const [keyTouched, setKeyTouched] = useState(false);
   const [description, setDescription] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('folder-kanban');
+  const [selectedColor, setSelectedColor] = useState('#0052CC');
   const [category, setCategory] = useState('');
   const [leadQuery, setLeadQuery] = useState('');
   const [selectedLead, setSelectedLead] = useState<UserSearchResult | null>(null);
@@ -134,6 +101,7 @@ export function CreateProjectDialog({
     setKeyTouched(false);
     setDescription('');
     setSelectedIcon('folder-kanban');
+    setSelectedColor('#0052CC');
     setCategory('');
     setLeadQuery('');
     setSelectedLead(null);
@@ -149,7 +117,8 @@ export function CreateProjectDialog({
         key,
         description: description.trim() || undefined,
         leadId: selectedLead?.id,
-        iconUrl: selectedIcon !== 'folder-kanban' ? selectedIcon : undefined,
+        iconUrl: selectedIcon,
+        color: selectedColor,
         category: category || undefined,
       });
       onOpenChange(false);
@@ -164,8 +133,7 @@ export function CreateProjectDialog({
     onOpenChange(isOpen);
   };
 
-  const SelectedIconComponent =
-    PROJECT_ICONS.find((i) => i.name === selectedIcon)?.icon ?? FolderKanban;
+  const SelectedIconComponent = getProjectIcon(selectedIcon);
 
   const showLeadResults = leadQuery.length >= 2 && !selectedLead;
 
@@ -176,7 +144,7 @@ export function CreateProjectDialog({
           <SheetTitle className="flex items-center gap-3">
             <div
               className="flex size-10 items-center justify-center rounded-lg text-white"
-              style={{ backgroundColor: colors.base }}
+              style={{ backgroundColor: selectedColor }}
             >
               <SelectedIconComponent className="size-5" />
             </div>
@@ -189,32 +157,22 @@ export function CreateProjectDialog({
 
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col">
           <div className="space-y-6 px-4">
-            {/* Icon selector */}
+            {/* Icon & color selector */}
             <div className="space-y-2">
-              <Label>Icono</Label>
-              <div className="grid grid-cols-6 gap-2">
-                {PROJECT_ICONS.map((item) => {
-                  const Icon = item.icon;
-                  const isSelected = selectedIcon === item.name;
-                  return (
-                    <button
-                      key={item.name}
-                      type="button"
-                      onClick={() => setSelectedIcon(item.name)}
-                      className={cn(
-                        'flex flex-col items-center gap-1 rounded-lg border p-2 transition-all hover:bg-muted',
-                        isSelected && 'border-2 bg-muted',
-                      )}
-                      style={isSelected ? { borderColor: colors.base } : undefined}
-                    >
-                      <Icon
-                        className="size-5"
-                        style={isSelected ? { color: colors.base } : undefined}
-                      />
-                      <span className="text-[9px] text-muted-foreground">{item.label}</span>
-                    </button>
-                  );
-                })}
+              <Label>Icono y color</Label>
+              <div className="flex items-center gap-3">
+                <IconColorPicker
+                  selectedIcon={selectedIcon}
+                  selectedColor={selectedColor}
+                  onIconChange={setSelectedIcon}
+                  onColorChange={setSelectedColor}
+                />
+                <div>
+                  <p className="text-sm font-medium">Personalizar</p>
+                  <p className="text-xs text-muted-foreground">
+                    Haz clic para cambiar el icono y color
+                  </p>
+                </div>
               </div>
             </div>
 

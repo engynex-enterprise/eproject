@@ -1,15 +1,13 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { createElement, useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   SidebarIcon,
-  Bell,
   Search,
   FolderKanban,
   Star,
   IterationCcw,
-  Plus,
   Settings,
 } from "lucide-react";
 import {
@@ -32,11 +30,12 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-  CommandShortcut,
 } from "@/components/ui/command";
 import { usePathname } from "next/navigation";
 import { useProjects } from "@/modules/projects/hooks/use-projects";
 import { useAccentColor } from "@/shared/providers/accent-color-provider";
+import { NotificationBell } from "@/modules/notifications/components/notification-bell";
+import { getProjectIcon } from "@/modules/projects/components/icon-color-picker";
 
 const ORG_ID = 1;
 const FAVORITES_KEY = "eproject:favorite-projects";
@@ -123,69 +122,71 @@ export function SiteHeader() {
 
   return (
     <>
-      <header className="bg-background sticky top-0 z-50 flex w-full items-center border-b">
-        <div className="flex h-(--header-height) w-full items-center gap-2 px-4">
-          <Button
-            className="h-8 w-8"
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-          >
-            <SidebarIcon />
-          </Button>
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb className="hidden sm:block">
-            <BreadcrumbList>
-              {breadcrumbs.map((crumb, index) => (
-                <span key={crumb.href} className="contents">
-                  {index > 0 && <BreadcrumbSeparator />}
-                  <BreadcrumbItem>
-                    {crumb.isLast ? (
-                      <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-                    ) : (
-                      <BreadcrumbLink href={crumb.href}>
-                        {crumb.label}
-                      </BreadcrumbLink>
-                    )}
-                  </BreadcrumbItem>
-                </span>
-              ))}
-            </BreadcrumbList>
-          </Breadcrumb>
+      <header className="sticky top-0 z-50 flex w-full items-center border-b bg-white dark:bg-background">
+        <div className="flex h-(--header-height) w-full items-center gap-3 px-4 lg:px-6">
+          {/* Left: sidebar toggle + breadcrumbs */}
+          <div className="flex items-center gap-3">
+            <Button
+              className="size-8"
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+            >
+              <SidebarIcon className="size-4" />
+            </Button>
+            <Separator orientation="vertical" className="h-5" />
+            <Breadcrumb className="hidden sm:block">
+              <BreadcrumbList>
+                {breadcrumbs.map((crumb, index) => (
+                  <span key={crumb.href} className="contents">
+                    {index > 0 && <BreadcrumbSeparator />}
+                    <BreadcrumbItem>
+                      {crumb.isLast ? (
+                        <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                      ) : (
+                        <BreadcrumbLink href={crumb.href}>
+                          {crumb.label}
+                        </BreadcrumbLink>
+                      )}
+                    </BreadcrumbItem>
+                  </span>
+                ))}
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
 
-          <div className="ml-auto flex items-center gap-2">
-            {/* Search button with shortcut - visible on sm+ */}
+          {/* Right: search + notifications */}
+          <div className="ml-auto flex items-center gap-1.5">
+            {/* Desktop search button with shortcut */}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCommandOpen(true)}
-              className="hidden gap-2 text-muted-foreground sm:flex"
+              className="hidden h-8 gap-2 text-muted-foreground sm:flex"
             >
               <Search className="size-3.5" />
-              Buscar...
-              <kbd className="pointer-events-none ml-1 inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
-                <span className="text-xs">⌘</span>K
+              <span className="text-xs">Buscar...</span>
+              <kbd className="pointer-events-none ml-2 inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
+                <span className="text-xs">&#8984;</span>K
               </kbd>
             </Button>
-            {/* Icon-only search button for mobile */}
+            {/* Mobile search */}
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 sm:hidden"
+              className="size-8 sm:hidden"
               onClick={() => setCommandOpen(true)}
             >
-              <Search className="h-4 w-4" />
+              <Search className="size-4" />
               <span className="sr-only">Buscar</span>
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 relative">
-              <Bell className="h-4 w-4" />
-              <span className="sr-only">Notificaciones</span>
-            </Button>
+            {/* Notifications */}
+            <NotificationBell />
           </div>
         </div>
       </header>
 
-      {/* Global command palette (⌘K) */}
+      {/* Global command palette (Cmd+K) */}
       <CommandDialog
         open={commandOpen}
         onOpenChange={setCommandOpen}
@@ -208,9 +209,9 @@ export function SiteHeader() {
                 >
                   <div
                     className="flex size-6 items-center justify-center rounded-md text-white"
-                    style={{ backgroundColor: colors.base }}
+                    style={{ backgroundColor: project.color ?? colors.base }}
                   >
-                    <FolderKanban className="size-3" />
+                    {createElement(getProjectIcon(project.avatarUrl), { className: "size-3" })}
                   </div>
                   <div className="flex-1">
                     <span className="font-medium">{project.name}</span>
@@ -235,9 +236,9 @@ export function SiteHeader() {
               >
                 <div
                   className="flex size-6 items-center justify-center rounded-md text-white"
-                  style={{ backgroundColor: colors.base }}
+                  style={{ backgroundColor: project.color ?? colors.base }}
                 >
-                  <FolderKanban className="size-3" />
+                  {createElement(getProjectIcon(project.avatarUrl), { className: "size-3" })}
                 </div>
                 <div className="min-w-0 flex-1">
                   <span className="font-medium">{project.name}</span>
@@ -272,9 +273,9 @@ export function SiteHeader() {
                   >
                     <div
                       className="flex size-6 items-center justify-center rounded-md text-white"
-                      style={{ backgroundColor: colors.base }}
+                      style={{ backgroundColor: project.color ?? colors.base }}
                     >
-                      <FolderKanban className="size-3" />
+                      {createElement(getProjectIcon(project.avatarUrl), { className: "size-3" })}
                     </div>
                     <div className="min-w-0 flex-1">
                       <span className="font-medium">{project.name}</span>
