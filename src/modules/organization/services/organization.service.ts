@@ -60,28 +60,55 @@ export interface SsoConfig {
   github: SsoProviderConfig;
 }
 
+export interface EmailTemplate {
+  enabled: boolean;
+  subject: string;
+  body: string;
+}
+
+export interface EmailTemplates {
+  login_report: EmailTemplate;
+  account_activation: EmailTemplate;
+  password_recovery: EmailTemplate;
+  two_factor: EmailTemplate;
+  invitation: EmailTemplate;
+  report: EmailTemplate;
+  custom: EmailTemplate;
+}
+
 export interface NotificationChannelConfig {
-  email: {
-    enabled: boolean;
-    smtpHost: string;
-    smtpPort: number;
-    smtpUser: string;
-    smtpPassword: string;
-    fromName: string;
-    fromAddress: string;
-  };
-  sms: {
-    enabled: boolean;
-    provider: string;
-    apiKey: string;
-  };
-  whatsapp: {
-    enabled: boolean;
-    apiKey: string;
-  };
-  internal: {
-    enabled: boolean;
-  };
+  // Email general
+  emailEnabled: boolean;
+  emailProvider: 'smtp' | 'sendgrid' | 'aws_ses' | 'gmail';
+  emailFromName: string | null;
+  emailFromAddress: string | null;
+  // SMTP
+  smtpHost: string | null;
+  smtpPort: number | null;
+  smtpUser: string | null;
+  smtpPassword: string | null;
+  smtpSecure: boolean;
+  // SendGrid
+  sendgridApiKey: string | null;
+  // AWS SES
+  awsAccessKeyId: string | null;
+  awsSecretAccessKey: string | null;
+  awsRegion: string | null;
+  // Gmail OAuth2
+  gmailClientId: string | null;
+  gmailClientSecret: string | null;
+  gmailRefreshToken: string | null;
+  // SMS
+  smsEnabled: boolean;
+  smsProvider: string | null;
+  smsApiKey: string | null;
+  // WhatsApp
+  whatsappEnabled: boolean;
+  whatsappApiKey: string | null;
+  // Internal
+  internalEnabled: boolean;
+  // Templates
+  emailTemplates: EmailTemplates;
 }
 
 export interface StorageConfig {

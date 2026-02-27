@@ -1,41 +1,82 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  Save,
-  Loader2,
-  Mail,
-  MessageSquare,
-  Smartphone,
-  Bell,
-  Eye,
-  EyeOff,
-} from 'lucide-react';
+import { Save, Loader2, Smartphone, MessageSquare, Bell, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuthStore } from '@/shared/stores/auth.store';
-import {
-  useNotificationConfig,
-  useUpdateNotificationConfig,
-} from '@/modules/organization/hooks/use-organization';
+import { useNotificationConfig, useUpdateNotificationConfig } from '@/modules/organization/hooks/use-organization';
+import type { EmailTemplate } from '@/modules/organization/services/organization.service';
+
+// ─── Provider definitions ─────────────────────────────────────────────────────
+
+type EmailProvider = 'smtp' | 'sendgrid' | 'aws_ses' | 'gmail';
+
+const PROVIDERS: { id: EmailProvider; name: string; description: string; badge?: string; icon: React.ReactNode }[] = [
+  {
+    id: 'smtp',
+    name: 'SMTP',
+    description: 'Cualquier servidor de correo compatible con SMTP',
+    icon: (
+      <svg viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+      </svg>
+    ),
+  },
+  {
+    id: 'sendgrid',
+    name: 'SendGrid',
+    description: 'Plataforma de entrega de correo de Twilio',
+    badge: 'Popular',
+    icon: (
+      <svg viewBox="0 0 32 32" className="size-7" fill="currentColor">
+        <path d="M0 10.667h10.667v10.667H0zm10.667 10.666h10.666v10.667H10.667zM10.667 0h10.666v10.667H10.667zm10.666 10.667H32v10.666H21.333z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'aws_ses',
+    name: 'Amazon SES',
+    description: 'Simple Email Service de Amazon Web Services',
+    icon: (
+      <svg viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+    ),
+  },
+  {
+    id: 'gmail',
+    name: 'Gmail / Google',
+    description: 'Gmail o Google Workspace via OAuth2',
+    icon: (
+      <svg viewBox="0 0 24 24" className="size-7" fill="currentColor">
+        <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 010 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" />
+      </svg>
+    ),
+  },
+];
+
+// ─── Template definitions ─────────────────────────────────────────────────────
+
+const TEMPLATE_DEFS = [
+  { key: 'login_report',       label: 'Reporte de inicio de sesion',     description: 'Se envia cuando un usuario inicia sesion',           variables: ['{{name}}', '{{date}}', '{{device}}', '{{ip}}', '{{orgName}}'] },
+  { key: 'account_activation', label: 'Activacion de cuenta',             description: 'Enlace para activar una cuenta nueva',               variables: ['{{name}}', '{{link}}', '{{orgName}}'] },
+  { key: 'password_recovery',  label: 'Recuperacion de contrasena',       description: 'Enlace para restablecer la contrasena',               variables: ['{{name}}', '{{link}}', '{{orgName}}'] },
+  { key: 'two_factor',         label: 'Codigo de doble factor (2FA)',     description: 'Codigo OTP para autenticacion de dos factores',       variables: ['{{name}}', '{{code}}', '{{orgName}}'] },
+  { key: 'invitation',         label: 'Invitacion / creacion de cuenta',  description: 'Enlace de invitacion o credenciales de cuenta nueva', variables: ['{{name}}', '{{inviterName}}', '{{role}}', '{{link}}', '{{orgName}}'] },
+  { key: 'report',             label: 'Informes periodicos',               description: 'Correo de resumen o informe de actividad',            variables: ['{{name}}', '{{reportContent}}', '{{orgName}}'] },
+  { key: 'custom',             label: 'Plantilla personalizada',           description: 'Plantilla libre para usos adicionales',               variables: ['{{name}}', '{{message}}', '{{orgName}}'] },
+] as const;
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function OrgNotificationsPage() {
   const { currentOrgId } = useAuthStore();
@@ -44,225 +85,466 @@ export default function OrgNotificationsPage() {
   const { data: config, isLoading, isError } = useNotificationConfig(orgId);
   const updateConfig = useUpdateNotificationConfig(orgId);
 
-  // Email state
-  const [emailEnabled, setEmailEnabled] = useState(false);
-  const [smtpHost, setSmtpHost] = useState('');
-  const [smtpPort, setSmtpPort] = useState('587');
-  const [smtpUser, setSmtpUser] = useState('');
+  // Email general
+  const [emailEnabled,     setEmailEnabled]     = useState(false);
+  const [emailProvider,    setEmailProvider]    = useState<EmailProvider>('smtp');
+  const [emailFromName,    setEmailFromName]    = useState('');
+  const [emailFromAddress, setEmailFromAddress] = useState('');
+
+  // SMTP
+  const [smtpHost,     setSmtpHost]     = useState('');
+  const [smtpPort,     setSmtpPort]     = useState('587');
+  const [smtpUser,     setSmtpUser]     = useState('');
   const [smtpPassword, setSmtpPassword] = useState('');
-  const [fromName, setFromName] = useState('');
-  const [fromAddress, setFromAddress] = useState('');
-  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
+  const [smtpSecure,   setSmtpSecure]   = useState(false);
+  const [showSmtpPass, setShowSmtpPass] = useState(false);
 
-  // SMS state
-  const [smsEnabled, setSmsEnabled] = useState(false);
-  const [smsProvider, setSmsProvider] = useState('twilio');
-  const [smsApiKey, setSmsApiKey] = useState('');
+  // SendGrid
+  const [sendgridApiKey, setSendgridApiKey] = useState('');
+  const [showSgKey,      setShowSgKey]      = useState(false);
 
-  // WhatsApp state
+  // AWS SES
+  const [awsAccessKeyId,     setAwsAccessKeyId]     = useState('');
+  const [awsSecretAccessKey, setAwsSecretAccessKey] = useState('');
+  const [awsRegion,          setAwsRegion]          = useState('us-east-1');
+  const [showAwsSecret,      setShowAwsSecret]      = useState(false);
+
+  // Gmail OAuth2
+  const [gmailClientId,     setGmailClientId]     = useState('');
+  const [gmailClientSecret, setGmailClientSecret] = useState('');
+  const [gmailRefreshToken, setGmailRefreshToken] = useState('');
+  const [showGmailSecret,   setShowGmailSecret]   = useState(false);
+
+  // SMS / WhatsApp / Internal
+  const [smsEnabled,      setSmsEnabled]      = useState(false);
+  const [smsProvider,     setSmsProvider]     = useState('twilio');
+  const [smsApiKey,       setSmsApiKey]       = useState('');
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
-  const [whatsappApiKey, setWhatsappApiKey] = useState('');
-
-  // Internal state
+  const [whatsappApiKey,  setWhatsappApiKey]  = useState('');
   const [internalEnabled, setInternalEnabled] = useState(true);
 
+  // Templates
+  const [templates,     setTemplates]     = useState<Record<string, EmailTemplate>>({});
+  const [openTemplate,  setOpenTemplate]  = useState<string | null>(null);
+
   useEffect(() => {
-    if (config) {
-      setEmailEnabled(config.email.enabled);
-      setSmtpHost(config.email.smtpHost);
-      setSmtpPort(String(config.email.smtpPort));
-      setSmtpUser(config.email.smtpUser);
-      setSmtpPassword(config.email.smtpPassword);
-      setFromName(config.email.fromName);
-      setFromAddress(config.email.fromAddress);
-      setSmsEnabled(config.sms.enabled);
-      setSmsProvider(config.sms.provider);
-      setSmsApiKey(config.sms.apiKey);
-      setWhatsappEnabled(config.whatsapp.enabled);
-      setWhatsappApiKey(config.whatsapp.apiKey);
-      setInternalEnabled(config.internal.enabled);
+    if (!config) return;
+    setEmailEnabled(config.emailEnabled);
+    setEmailProvider((config.emailProvider as EmailProvider) ?? 'smtp');
+    setEmailFromName(config.emailFromName ?? '');
+    setEmailFromAddress(config.emailFromAddress ?? '');
+    setSmtpHost(config.smtpHost ?? '');
+    setSmtpPort(String(config.smtpPort ?? 587));
+    setSmtpUser(config.smtpUser ?? '');
+    setSmtpPassword(config.smtpPassword ?? '');
+    setSmtpSecure(config.smtpSecure ?? false);
+    setSendgridApiKey(config.sendgridApiKey ?? '');
+    setAwsAccessKeyId(config.awsAccessKeyId ?? '');
+    setAwsSecretAccessKey(config.awsSecretAccessKey ?? '');
+    setAwsRegion(config.awsRegion ?? 'us-east-1');
+    setGmailClientId(config.gmailClientId ?? '');
+    setGmailClientSecret(config.gmailClientSecret ?? '');
+    setGmailRefreshToken(config.gmailRefreshToken ?? '');
+    setSmsEnabled(config.smsEnabled);
+    setSmsProvider(config.smsProvider ?? 'twilio');
+    setSmsApiKey(config.smsApiKey ?? '');
+    setWhatsappEnabled(config.whatsappEnabled);
+    setWhatsappApiKey(config.whatsappApiKey ?? '');
+    setInternalEnabled(config.internalEnabled);
+    if (config.emailTemplates) {
+      setTemplates(config.emailTemplates as unknown as Record<string, EmailTemplate>);
     }
   }, [config]);
 
+  const updateTemplate = (key: string, field: keyof EmailTemplate, value: string | boolean) => {
+    setTemplates((prev) => ({ ...prev, [key]: { ...(prev[key] ?? { enabled: true, subject: '', body: '' }), [field]: value } }));
+  };
+
   const handleSave = () => {
     updateConfig.mutate({
-      email: {
-        enabled: emailEnabled,
-        smtpHost,
-        smtpPort: Number(smtpPort),
-        smtpUser,
-        smtpPassword,
-        fromName,
-        fromAddress,
-      },
-      sms: {
-        enabled: smsEnabled,
-        provider: smsProvider,
-        apiKey: smsApiKey,
-      },
-      whatsapp: {
-        enabled: whatsappEnabled,
-        apiKey: whatsappApiKey,
-      },
-      internal: {
-        enabled: internalEnabled,
-      },
+      emailEnabled,
+      emailProvider,
+      emailFromName:    emailFromName    || null,
+      emailFromAddress: emailFromAddress || null,
+      smtpHost:         smtpHost         || null,
+      smtpPort:         smtpPort ? Number(smtpPort) : null,
+      smtpUser:         smtpUser         || null,
+      smtpPassword:     smtpPassword     || null,
+      smtpSecure,
+      sendgridApiKey:      sendgridApiKey      || null,
+      awsAccessKeyId:      awsAccessKeyId      || null,
+      awsSecretAccessKey:  awsSecretAccessKey  || null,
+      awsRegion:           awsRegion           || null,
+      gmailClientId:       gmailClientId       || null,
+      gmailClientSecret:   gmailClientSecret   || null,
+      gmailRefreshToken:   gmailRefreshToken   || null,
+      smsEnabled,
+      smsProvider:    smsProvider    || null,
+      smsApiKey:      smsApiKey      || null,
+      whatsappEnabled,
+      whatsappApiKey: whatsappApiKey || null,
+      internalEnabled,
+      emailTemplates: templates as never,
     });
   };
 
+  // ── Loading ───────────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="flex-1 space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-80" />
-        <Skeleton className="h-64 w-full" />
-        <Skeleton className="h-32 w-full" />
+      <div className="space-y-6 pb-24">
+        <div className="border-b pb-6 space-y-2">
+          <Skeleton className="h-7 w-52" />
+          <Skeleton className="h-4 w-80" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        </div>
+        <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="flex-1">
-        <Card className="border-destructive">
-          <CardContent className="pt-6">
-            <p className="text-destructive text-sm">
-              Error al cargar la configuracion de notificaciones.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+        Error al cargar la configuracion de notificaciones. Intenta de nuevo mas tarde.
       </div>
     );
   }
 
   return (
-    <div className="flex-1 max-w-2xl pb-24">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Canales de notificacion
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Configura los canales de notificacion disponibles para tu
-            organizacion.
-          </p>
-        </div>
+    <div className="space-y-0 pb-24">
+      {/* ── Page header ───────────────────────────────────────────────────── */}
+      <div className="border-b pb-6 mb-8">
+        <h2 className="text-xl font-semibold tracking-tight">Canales de notificacion</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Configura los proveedores de correo, SMS y las plantillas de mensajes.
+        </p>
+      </div>
 
-        <div className="space-y-6">
-          {/* Email */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
-                    <Mail className="size-5 text-blue-600" />
-                  </div>
+      <div className="space-y-10">
+
+        {/* ═══════════════════════════════════════════════════════════
+            CORREO ELECTRÓNICO
+        ═══════════════════════════════════════════════════════════ */}
+        <div className="grid gap-x-10 gap-y-6 md:grid-cols-[220px_1fr]">
+          <div className="space-y-1.5">
+            <h3 className="text-sm font-semibold">Correo electronico</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Selecciona y configura el proveedor para el envio de correos transaccionales.
+            </p>
+          </div>
+
+          <div className="space-y-5">
+            {/* Activation toggle */}
+            <Card className="shadow-sm bg-white dark:bg-card">
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-base">
-                      Correo electronico
-                    </CardTitle>
-                    <CardDescription>
-                      Configuracion del servidor SMTP para envio de correos.
-                    </CardDescription>
+                    <p className="text-sm font-medium">Activar envio de correos</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Habilita el envio de correos transaccionales a los miembros de la organizacion.
+                    </p>
                   </div>
+                  <Switch checked={emailEnabled} onCheckedChange={setEmailEnabled} />
                 </div>
-                <Switch
-                  checked={emailEnabled}
-                  onCheckedChange={setEmailEnabled}
-                />
+              </CardContent>
+            </Card>
+
+            {/* Provider cards */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Proveedor de correo</Label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {PROVIDERS.map((p) => {
+                  const active = emailProvider === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setEmailProvider(p.id)}
+                      className={`relative flex items-start gap-3 rounded-xl border p-4 text-left transition-all ${
+                        active
+                          ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                          : 'border-border bg-white dark:bg-card hover:border-muted-foreground/30 hover:bg-muted/20'
+                      }`}
+                    >
+                      {/* Radio dot */}
+                      <div className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${active ? 'border-primary' : 'border-muted-foreground/40'}`}>
+                        {active && <span className="size-2 rounded-full bg-primary block" />}
+                      </div>
+                      {/* Icon */}
+                      <div className={`shrink-0 mt-0.5 ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {p.icon}
+                      </div>
+                      {/* Text */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold">{p.name}</span>
+                          {p.badge && <Badge variant="secondary" className="text-[10px] py-0 px-1.5">{p.badge}</Badge>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{p.description}</p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-            </CardHeader>
-            {emailEnabled && (
-              <CardContent className="space-y-4">
-                <Separator />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="smtp-host">Servidor SMTP</Label>
-                    <Input
-                      id="smtp-host"
-                      value={smtpHost}
-                      onChange={(e) => setSmtpHost(e.target.value)}
-                      placeholder="smtp.gmail.com"
-                    />
+            </div>
+
+            {/* ── SMTP config ───────────────────────────────────────────── */}
+            {emailProvider === 'smtp' && (
+              <Card className="shadow-sm bg-white dark:bg-card">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Configuracion SMTP</CardTitle>
+                  <CardDescription>Parametros de conexion con tu servidor de correo saliente.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+                    <div className="space-y-2">
+                      <Label htmlFor="smtp-host">Servidor SMTP</Label>
+                      <Input id="smtp-host" value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} placeholder="smtp.gmail.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="smtp-port">Puerto</Label>
+                      <Input id="smtp-port" value={smtpPort} onChange={(e) => setSmtpPort(e.target.value)} placeholder="587" type="number" min={1} max={65535} />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="smtp-port">Puerto</Label>
-                    <Input
-                      id="smtp-port"
-                      value={smtpPort}
-                      onChange={(e) => setSmtpPort(e.target.value)}
-                      placeholder="587"
-                      type="number"
-                    />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="smtp-user">Usuario SMTP</Label>
+                      <Input id="smtp-user" value={smtpUser} onChange={(e) => setSmtpUser(e.target.value)} placeholder="tu@correo.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="smtp-password">Contrasena</Label>
+                      <div className="relative">
+                        <Input id="smtp-password" type={showSmtpPass ? 'text' : 'password'} value={smtpPassword} onChange={(e) => setSmtpPassword(e.target.value)} placeholder="Contrasena SMTP" />
+                        <Button type="button" variant="ghost" size="icon-xs" className="absolute right-2 top-1/2 -translate-y-1/2" onClick={() => setShowSmtpPass(!showSmtpPass)}>
+                          {showSmtpPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="smtp-user">Usuario SMTP</Label>
-                    <Input
-                      id="smtp-user"
-                      value={smtpUser}
-                      onChange={(e) => setSmtpUser(e.target.value)}
-                      placeholder="usuario@ejemplo.com"
-                    />
+                  <div className="flex items-center gap-3">
+                    <Switch id="smtp-secure" checked={smtpSecure} onCheckedChange={setSmtpSecure} />
+                    <Label htmlFor="smtp-secure" className="cursor-pointer">Usar TLS/SSL (recomendado para puerto 465)</Label>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ── SendGrid config ───────────────────────────────────────── */}
+            {emailProvider === 'sendgrid' && (
+              <Card className="shadow-sm bg-white dark:bg-card">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Configuracion SendGrid</CardTitle>
+                  <CardDescription>
+                    Obtén tu API key en <span className="font-mono text-xs bg-muted px-1 rounded">app.sendgrid.com → Settings → API Keys</span>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="smtp-password">Contrasena SMTP</Label>
+                    <Label htmlFor="sg-key">API Key de SendGrid</Label>
                     <div className="relative">
-                      <Input
-                        id="smtp-password"
-                        type={showSmtpPassword ? 'text' : 'password'}
-                        value={smtpPassword}
-                        onChange={(e) => setSmtpPassword(e.target.value)}
-                        placeholder="Contrasena"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        className="absolute right-2 top-1/2 -translate-y-1/2"
-                        onClick={() =>
-                          setShowSmtpPassword(!showSmtpPassword)
-                        }
-                      >
-                        {showSmtpPassword ? (
-                          <EyeOff className="size-4" />
-                        ) : (
-                          <Eye className="size-4" />
-                        )}
+                      <Input id="sg-key" type={showSgKey ? 'text' : 'password'} value={sendgridApiKey} onChange={(e) => setSendgridApiKey(e.target.value)} placeholder="SG.xxxxxxxxxxxxxxxxxx" className="font-mono pr-10" />
+                      <Button type="button" variant="ghost" size="icon-xs" className="absolute right-2 top-1/2 -translate-y-1/2" onClick={() => setShowSgKey(!showSgKey)}>
+                        {showSgKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                       </Button>
                     </div>
                   </div>
-                </div>
-                <Separator />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ── AWS SES config ────────────────────────────────────────── */}
+            {emailProvider === 'aws_ses' && (
+              <Card className="shadow-sm bg-white dark:bg-card">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Configuracion Amazon SES</CardTitle>
+                  <CardDescription>
+                    Crea un usuario IAM con el permiso <span className="font-mono text-xs bg-muted px-1 rounded">ses:SendEmail</span> y verifica tu dominio remitente en SES.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="aws-key-id">Access Key ID</Label>
+                    <Input id="aws-key-id" value={awsAccessKeyId} onChange={(e) => setAwsAccessKeyId(e.target.value)} placeholder="AKIAIOSFODNN7EXAMPLE" className="font-mono" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="aws-secret">Secret Access Key</Label>
+                    <div className="relative">
+                      <Input id="aws-secret" type={showAwsSecret ? 'text' : 'password'} value={awsSecretAccessKey} onChange={(e) => setAwsSecretAccessKey(e.target.value)} placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" className="font-mono pr-10" />
+                      <Button type="button" variant="ghost" size="icon-xs" className="absolute right-2 top-1/2 -translate-y-1/2" onClick={() => setShowAwsSecret(!showAwsSecret)}>
+                        {showAwsSecret ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="aws-region">Region</Label>
+                    <Select value={awsRegion} onValueChange={setAwsRegion}>
+                      <SelectTrigger id="aws-region"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {['us-east-1','us-east-2','us-west-1','us-west-2','eu-west-1','eu-west-2','eu-central-1','ap-southeast-1','ap-southeast-2','ap-northeast-1','sa-east-1'].map((r) => (
+                          <SelectItem key={r} value={r}>{r}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ── Gmail / Google OAuth2 config ──────────────────────────── */}
+            {emailProvider === 'gmail' && (
+              <Card className="shadow-sm bg-white dark:bg-card">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Configuracion Gmail / Google Workspace</CardTitle>
+                  <CardDescription>
+                    Crea credenciales OAuth2 en <span className="font-mono text-xs bg-muted px-1 rounded">console.cloud.google.com</span> → APIs & Services → Credentials → OAuth 2.0 Client (tipo Web application).
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="gmail-client-id">Client ID</Label>
+                    <Input id="gmail-client-id" value={gmailClientId} onChange={(e) => setGmailClientId(e.target.value)} placeholder="xxxxxxxxxx.apps.googleusercontent.com" className="font-mono text-xs" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gmail-secret">Client Secret</Label>
+                    <div className="relative">
+                      <Input id="gmail-secret" type={showGmailSecret ? 'text' : 'password'} value={gmailClientSecret} onChange={(e) => setGmailClientSecret(e.target.value)} placeholder="GOCSPX-xxxxxxxxxxxxxxx" className="font-mono text-xs pr-10" />
+                      <Button type="button" variant="ghost" size="icon-xs" className="absolute right-2 top-1/2 -translate-y-1/2" onClick={() => setShowGmailSecret(!showGmailSecret)}>
+                        {showGmailSecret ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gmail-refresh">Refresh Token</Label>
+                    <Input id="gmail-refresh" value={gmailRefreshToken} onChange={(e) => setGmailRefreshToken(e.target.value)} placeholder="1//0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" className="font-mono text-xs" />
+                    <p className="text-xs text-muted-foreground">
+                      Genera el refresh token con el scope <span className="font-mono bg-muted px-1 rounded">https://mail.google.com/</span> usando el Playground de OAuth2.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Sender info — common to all providers */}
+            <Card className="shadow-sm bg-white dark:bg-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Datos del remitente</CardTitle>
+                <CardDescription>Nombre y correo que veran los destinatarios en cada mensaje.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="from-name">Nombre del remitente</Label>
-                    <Input
-                      id="from-name"
-                      value={fromName}
-                      onChange={(e) => setFromName(e.target.value)}
-                      placeholder="Mi Organizacion"
-                    />
+                    <Input id="from-name" value={emailFromName} onChange={(e) => setEmailFromName(e.target.value)} placeholder="Mi Organizacion" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="from-address">
-                      Correo del remitente
-                    </Label>
-                    <Input
-                      id="from-address"
-                      value={fromAddress}
-                      onChange={(e) => setFromAddress(e.target.value)}
-                      placeholder="noreply@ejemplo.com"
-                      type="email"
-                    />
+                    <Label htmlFor="from-address">Correo remitente</Label>
+                    <Input id="from-address" type="email" value={emailFromAddress} onChange={(e) => setEmailFromAddress(e.target.value)} placeholder="noreply@miempresa.com" />
                   </div>
                 </div>
               </CardContent>
-            )}
-          </Card>
+            </Card>
+          </div>
+        </div>
 
-          {/* SMS */}
-          <Card>
+        <Separator />
+
+        {/* ═══════════════════════════════════════════════════════════
+            PLANTILLAS DE CORREO
+        ═══════════════════════════════════════════════════════════ */}
+        <div className="grid gap-x-10 gap-y-6 md:grid-cols-[220px_1fr]">
+          <div className="space-y-1.5">
+            <h3 className="text-sm font-semibold">Plantillas de correo</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Personaliza el asunto y cuerpo de cada tipo de correo. Usa las variables indicadas para contenido dinamico.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {TEMPLATE_DEFS.map((def) => {
+              const tpl: EmailTemplate = templates[def.key] ?? { enabled: true, subject: '', body: '' };
+              const isOpen = openTemplate === def.key;
+              return (
+                <Card key={def.key} className="shadow-sm bg-white dark:bg-card overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setOpenTemplate(isOpen ? null : def.key)}
+                    className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left hover:bg-muted/20 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Switch
+                        checked={tpl.enabled}
+                        onCheckedChange={(v) => updateTemplate(def.key, 'enabled', v)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">{def.label}</p>
+                        <p className="text-xs text-muted-foreground truncate">{def.description}</p>
+                      </div>
+                    </div>
+                    {isOpen
+                      ? <ChevronUp className="size-4 text-muted-foreground shrink-0" />
+                      : <ChevronDown className="size-4 text-muted-foreground shrink-0" />
+                    }
+                  </button>
+
+                  {isOpen && (
+                    <div className="border-t px-5 py-5 space-y-4 bg-muted/20">
+                      {/* Variables */}
+                      <div className="flex items-center flex-wrap gap-2">
+                        <span className="text-xs text-muted-foreground font-medium">Variables:</span>
+                        {def.variables.map((v) => (
+                          <code key={v} className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono cursor-pointer hover:bg-primary/10 transition-colors" onClick={() => navigator.clipboard.writeText(v)} title="Clic para copiar">
+                            {v}
+                          </code>
+                        ))}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`subject-${def.key}`}>Asunto</Label>
+                        <Input
+                          id={`subject-${def.key}`}
+                          value={tpl.subject}
+                          onChange={(e) => updateTemplate(def.key, 'subject', e.target.value)}
+                          placeholder="Asunto del correo..."
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`body-${def.key}`}>Cuerpo del mensaje</Label>
+                        <Textarea
+                          id={`body-${def.key}`}
+                          value={tpl.body}
+                          onChange={(e) => updateTemplate(def.key, 'body', e.target.value)}
+                          rows={9}
+                          placeholder="Escribe el cuerpo del correo. Puedes usar saltos de linea para separar parrafos."
+                          className="font-mono text-xs resize-y"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Texto plano con saltos de linea. Clic en una variable para copiarla.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* ═══════════════════════════════════════════════════════════
+            SMS
+        ═══════════════════════════════════════════════════════════ */}
+        <div className="grid gap-x-10 gap-y-6 md:grid-cols-[220px_1fr]">
+          <div className="space-y-1.5">
+            <h3 className="text-sm font-semibold">SMS</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Configura el proveedor de mensajes SMS para notificaciones de texto.
+            </p>
+          </div>
+
+          <Card className="shadow-sm bg-white dark:bg-card">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -270,52 +552,50 @@ export default function OrgNotificationsPage() {
                     <Smartphone className="size-5 text-green-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-base">SMS</CardTitle>
-                    <CardDescription>
-                      Configura el proveedor de mensajes SMS.
-                    </CardDescription>
+                    <CardTitle className="text-sm">SMS</CardTitle>
+                    <CardDescription>Mensajes de texto a telefonos moviles.</CardDescription>
                   </div>
                 </div>
-                <Switch
-                  checked={smsEnabled}
-                  onCheckedChange={setSmsEnabled}
-                />
+                <Switch checked={smsEnabled} onCheckedChange={setSmsEnabled} />
               </div>
             </CardHeader>
             {smsEnabled && (
               <CardContent className="space-y-4">
                 <Separator />
                 <div className="space-y-2">
-                  <Label htmlFor="sms-provider">Proveedor</Label>
+                  <Label>Proveedor</Label>
                   <Select value={smsProvider} onValueChange={setSmsProvider}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar proveedor" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar proveedor" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="twilio">Twilio</SelectItem>
                       <SelectItem value="vonage">Vonage</SelectItem>
-                      <SelectItem value="messagebird">
-                        MessageBird
-                      </SelectItem>
+                      <SelectItem value="messagebird">MessageBird</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="sms-api-key">API Key</Label>
-                  <Input
-                    id="sms-api-key"
-                    value={smsApiKey}
-                    onChange={(e) => setSmsApiKey(e.target.value)}
-                    placeholder="Tu API Key"
-                    type="password"
-                  />
+                  <Label>API Key</Label>
+                  <Input type="password" value={smsApiKey} onChange={(e) => setSmsApiKey(e.target.value)} placeholder="Tu API Key" />
                 </div>
               </CardContent>
             )}
           </Card>
+        </div>
 
-          {/* WhatsApp */}
-          <Card>
+        <Separator />
+
+        {/* ═══════════════════════════════════════════════════════════
+            WHATSAPP
+        ═══════════════════════════════════════════════════════════ */}
+        <div className="grid gap-x-10 gap-y-6 md:grid-cols-[220px_1fr]">
+          <div className="space-y-1.5">
+            <h3 className="text-sm font-semibold">WhatsApp</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Notificaciones via WhatsApp Business API.
+            </p>
+          </div>
+
+          <Card className="shadow-sm bg-white dark:bg-card">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -323,85 +603,68 @@ export default function OrgNotificationsPage() {
                     <MessageSquare className="size-5 text-emerald-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-base">WhatsApp</CardTitle>
-                    <CardDescription>
-                      Configura las notificaciones por WhatsApp.
-                    </CardDescription>
+                    <CardTitle className="text-sm">WhatsApp</CardTitle>
+                    <CardDescription>Notificaciones por WhatsApp Business.</CardDescription>
                   </div>
                 </div>
-                <Switch
-                  checked={whatsappEnabled}
-                  onCheckedChange={setWhatsappEnabled}
-                />
+                <Switch checked={whatsappEnabled} onCheckedChange={setWhatsappEnabled} />
               </div>
             </CardHeader>
             {whatsappEnabled && (
               <CardContent className="space-y-4">
                 <Separator />
                 <div className="space-y-2">
-                  <Label htmlFor="whatsapp-api-key">API Key</Label>
-                  <Input
-                    id="whatsapp-api-key"
-                    value={whatsappApiKey}
-                    onChange={(e) => setWhatsappApiKey(e.target.value)}
-                    placeholder="Tu WhatsApp Business API Key"
-                    type="password"
-                  />
+                  <Label>WhatsApp Business API Key</Label>
+                  <Input type="password" value={whatsappApiKey} onChange={(e) => setWhatsappApiKey(e.target.value)} placeholder="Tu WhatsApp Business API Key" />
                 </div>
               </CardContent>
             )}
           </Card>
+        </div>
 
-          {/* Internal Notifications */}
-          <Card>
-            <CardHeader>
+        <Separator />
+
+        {/* ═══════════════════════════════════════════════════════════
+            NOTIFICACIONES INTERNAS
+        ═══════════════════════════════════════════════════════════ */}
+        <div className="grid gap-x-10 gap-y-6 md:grid-cols-[220px_1fr]">
+          <div className="space-y-1.5">
+            <h3 className="text-sm font-semibold">Notificaciones internas</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Notificaciones en tiempo real dentro de la plataforma.
+            </p>
+          </div>
+
+          <Card className="shadow-sm bg-white dark:bg-card">
+            <CardContent className="pt-5 pb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex size-10 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950">
                     <Bell className="size-5 text-violet-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-base">
-                      Notificaciones internas
-                    </CardTitle>
-                    <CardDescription>
-                      Notificaciones dentro de la plataforma. Activadas por
-                      defecto.
-                    </CardDescription>
+                    <p className="text-sm font-medium">Notificaciones en plataforma</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Alertas y avisos dentro de la aplicacion. Recomendado mantener activo.</p>
                   </div>
                 </div>
-                <Switch
-                  checked={internalEnabled}
-                  onCheckedChange={setInternalEnabled}
-                />
+                <Switch checked={internalEnabled} onCheckedChange={setInternalEnabled} />
               </div>
-            </CardHeader>
+            </CardContent>
           </Card>
-
         </div>
 
-        {/* ── Fixed save bar ──────────────────────────────────────── */}
-        <div
-          className="fixed bottom-0 right-0 z-20 border-t bg-white/80 backdrop-blur-sm dark:bg-card/80"
-          style={{ left: 'var(--sidebar-width)' }}
-        >
-          <div className="mx-auto flex max-w-2xl items-center justify-between px-6 py-3">
-            <p className="text-xs text-muted-foreground">
-              Los cambios no se guardan automaticamente.
-            </p>
-            <Button
-              onClick={handleSave}
-              disabled={updateConfig.isPending}
-            >
-              {updateConfig.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Save className="size-4" />
-              )}
-              Guardar cambios
-            </Button>
-          </div>
+      </div>
+
+      {/* ── Fixed save bar ─────────────────────────────────────────────── */}
+      <div className="fixed bottom-0 right-0 z-20 border-t bg-background/80 backdrop-blur-sm" style={{ left: 'var(--sidebar-width)' }}>
+        <div className="flex items-center justify-between px-6 py-3">
+          <p className="text-xs text-muted-foreground">Los cambios no se guardan automaticamente.</p>
+          <Button onClick={handleSave} disabled={updateConfig.isPending}>
+            {updateConfig.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+            Guardar cambios
+          </Button>
         </div>
+      </div>
     </div>
   );
 }
