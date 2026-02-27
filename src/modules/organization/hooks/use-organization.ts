@@ -23,6 +23,16 @@ import {
   updateNotificationConfig,
   getStorageConfig,
   updateStorageConfig,
+  getSecurityConfig,
+  updateSecurityConfig,
+  getAuditLog,
+  getApiKeys,
+  createApiKey,
+  revokeApiKey,
+  getWebhooks,
+  createWebhook,
+  deleteWebhook,
+  getPlatformInfo,
   type UpdateOrganizationData,
   type InviteMemberData,
   type CreateRoleData,
@@ -31,6 +41,10 @@ import {
   type SsoConfig,
   type NotificationChannelConfig,
   type StorageConfig,
+  type SecurityConfig,
+  type AuditFilters,
+  type CreateApiKeyData,
+  type CreateWebhookData,
 } from '@/modules/organization/services/organization.service';
 
 // ─── Query Keys ─────────────────────────────────────────────────────────────
@@ -50,6 +64,13 @@ const orgKeys = {
     [...orgKeys.all, 'notification-config', orgId] as const,
   storageConfig: (orgId: number) =>
     [...orgKeys.all, 'storage-config', orgId] as const,
+  securityConfig: (orgId: number) =>
+    [...orgKeys.all, 'security-config', orgId] as const,
+  auditLog: (orgId: number, filters?: AuditFilters) =>
+    [...orgKeys.all, 'audit-log', orgId, filters] as const,
+  apiKeys: (orgId: number) => [...orgKeys.all, 'api-keys', orgId] as const,
+  webhooks: (orgId: number) => [...orgKeys.all, 'webhooks', orgId] as const,
+  platformInfo: () => [...orgKeys.all, 'platform-info'] as const,
 };
 
 // ─── Organization ───────────────────────────────────────────────────────────
@@ -266,5 +287,108 @@ export function useUpdateStorageConfig(orgId: number) {
         queryKey: orgKeys.storageConfig(orgId),
       });
     },
+  });
+}
+
+// ─── Security Config ─────────────────────────────────────────────────────────
+
+export function useSecurityConfig(orgId: number) {
+  return useQuery({
+    queryKey: orgKeys.securityConfig(orgId),
+    queryFn: () => getSecurityConfig(orgId),
+    enabled: !!orgId,
+  });
+}
+
+export function useUpdateSecurityConfig(orgId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<SecurityConfig>) =>
+      updateSecurityConfig(orgId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: orgKeys.securityConfig(orgId),
+      });
+    },
+  });
+}
+
+// ─── Audit Log ───────────────────────────────────────────────────────────────
+
+export function useAuditLog(orgId: number, filters?: AuditFilters) {
+  return useQuery({
+    queryKey: orgKeys.auditLog(orgId, filters),
+    queryFn: () => getAuditLog(orgId, filters),
+    enabled: !!orgId,
+  });
+}
+
+// ─── API Keys ────────────────────────────────────────────────────────────────
+
+export function useApiKeys(orgId: number) {
+  return useQuery({
+    queryKey: orgKeys.apiKeys(orgId),
+    queryFn: () => getApiKeys(orgId),
+    enabled: !!orgId,
+  });
+}
+
+export function useCreateApiKey(orgId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateApiKeyData) => createApiKey(orgId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.apiKeys(orgId) });
+    },
+  });
+}
+
+export function useRevokeApiKey(orgId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (keyId: number) => revokeApiKey(orgId, keyId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.apiKeys(orgId) });
+    },
+  });
+}
+
+// ─── Webhooks ────────────────────────────────────────────────────────────────
+
+export function useWebhooks(orgId: number) {
+  return useQuery({
+    queryKey: orgKeys.webhooks(orgId),
+    queryFn: () => getWebhooks(orgId),
+    enabled: !!orgId,
+  });
+}
+
+export function useCreateWebhook(orgId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateWebhookData) => createWebhook(orgId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.webhooks(orgId) });
+    },
+  });
+}
+
+export function useDeleteWebhook(orgId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (webhookId: number) => deleteWebhook(orgId, webhookId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orgKeys.webhooks(orgId) });
+    },
+  });
+}
+
+// ─── Platform Info ───────────────────────────────────────────────────────────
+
+export function usePlatformInfo() {
+  return useQuery({
+    queryKey: orgKeys.platformInfo(),
+    queryFn: () => getPlatformInfo(),
+    staleTime: 1000 * 60 * 5, // 5 min
   });
 }

@@ -298,3 +298,187 @@ export async function updateStorageConfig(
   );
   return res.data;
 }
+
+// ─── Security Config (stub — backend endpoint pending) ──────────────────────
+
+export interface PasswordPolicy {
+  minLength: number;
+  requireUppercase: boolean;
+  requireNumber: boolean;
+  requireSymbol: boolean;
+  expirationDays: number | null;
+}
+
+export interface SecurityConfig {
+  passwordPolicy: PasswordPolicy;
+  twoFactorAuth: { enabled: boolean; required: boolean };
+  accountLockout: { enabled: boolean; maxAttempts: number; lockoutMinutes: number };
+  ipWhitelist: { enabled: boolean; addresses: string[] };
+  socialProviders: SsoConfig;
+  sessionTimeout: number | null;
+}
+
+const DEFAULT_SECURITY_CONFIG: SecurityConfig = {
+  passwordPolicy: { minLength: 8, requireUppercase: false, requireNumber: false, requireSymbol: false, expirationDays: null },
+  twoFactorAuth: { enabled: false, required: false },
+  accountLockout: { enabled: false, maxAttempts: 5, lockoutMinutes: 30 },
+  ipWhitelist: { enabled: false, addresses: [] },
+  socialProviders: { google: { enabled: false, clientId: '', clientSecret: '' }, github: { enabled: false, clientId: '', clientSecret: '' } },
+  sessionTimeout: null,
+};
+
+export async function getSecurityConfig(_orgId: number): Promise<SecurityConfig> {
+  console.warn('[security] getSecurityConfig: backend endpoint not yet implemented');
+  return DEFAULT_SECURITY_CONFIG;
+}
+
+export async function updateSecurityConfig(
+  _orgId: number,
+  _data: Partial<SecurityConfig>,
+): Promise<SecurityConfig> {
+  console.warn('[security] updateSecurityConfig: backend endpoint not yet implemented');
+  return DEFAULT_SECURITY_CONFIG;
+}
+
+// ─── Audit Log (stub — backend endpoint pending) ────────────────────────────
+
+export interface AuditEntry {
+  id: number;
+  timestamp: string;
+  userId: number;
+  userName: string;
+  userEmail: string;
+  action: string;
+  resource: string;
+  resourceId: string;
+  ipAddress: string;
+}
+
+export interface AuditFilters {
+  userId?: number;
+  action?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AuditLogResult {
+  entries: AuditEntry[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+export async function getAuditLog(
+  _orgId: number,
+  _filters?: AuditFilters,
+): Promise<AuditLogResult> {
+  console.warn('[audit] getAuditLog: backend endpoint not yet implemented');
+  return { entries: [], total: 0, page: 1, totalPages: 0 };
+}
+
+// ─── API Keys (stub — backend endpoint pending) ─────────────────────────────
+
+export interface ApiKey {
+  id: number;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  createdAt: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+}
+
+export interface CreateApiKeyData {
+  name: string;
+  scopes: string[];
+  expiresAt?: string | null;
+}
+
+export interface CreateApiKeyResult {
+  key: ApiKey;
+  plaintext: string;
+}
+
+export async function getApiKeys(_orgId: number): Promise<ApiKey[]> {
+  console.warn('[advanced] getApiKeys: backend endpoint not yet implemented');
+  return [];
+}
+
+export async function createApiKey(
+  _orgId: number,
+  _data: CreateApiKeyData,
+): Promise<CreateApiKeyResult> {
+  console.warn('[advanced] createApiKey: backend endpoint not yet implemented');
+  const stub: ApiKey = { id: Date.now(), name: _data.name, prefix: 'ept_live_xxxx', scopes: _data.scopes, createdAt: new Date().toISOString(), lastUsedAt: null, expiresAt: _data.expiresAt ?? null };
+  return { key: stub, plaintext: `ept_live_${'x'.repeat(32)}` };
+}
+
+export async function revokeApiKey(
+  _orgId: number,
+  _keyId: number,
+): Promise<void> {
+  console.warn('[advanced] revokeApiKey: backend endpoint not yet implemented');
+}
+
+// ─── Webhooks (stub — backend endpoint pending) ─────────────────────────────
+
+export interface Webhook {
+  id: number;
+  url: string;
+  events: string[];
+  isActive: boolean;
+  lastTriggeredAt: string | null;
+  createdAt: string;
+}
+
+export interface CreateWebhookData {
+  url: string;
+  events: string[];
+}
+
+export async function getWebhooks(_orgId: number): Promise<Webhook[]> {
+  console.warn('[advanced] getWebhooks: backend endpoint not yet implemented');
+  return [];
+}
+
+export async function createWebhook(
+  _orgId: number,
+  _data: CreateWebhookData,
+): Promise<Webhook> {
+  console.warn('[advanced] createWebhook: backend endpoint not yet implemented');
+  return { id: Date.now(), url: _data.url, events: _data.events, isActive: true, lastTriggeredAt: null, createdAt: new Date().toISOString() };
+}
+
+export async function deleteWebhook(
+  _orgId: number,
+  _webhookId: number,
+): Promise<void> {
+  console.warn('[advanced] deleteWebhook: backend endpoint not yet implemented');
+}
+
+// ─── Platform Info (stub — backend endpoint pending) ────────────────────────
+
+export interface PlatformInfo {
+  appVersion: string;
+  apiVersion: string;
+  environment: string;
+  database: string;
+  uptime: number;
+  totalUsers: number;
+  totalOrgs: number;
+}
+
+export async function getPlatformInfo(): Promise<PlatformInfo> {
+  console.warn('[platform] getPlatformInfo: backend endpoint not yet implemented');
+  return {
+    appVersion: '1.0.0',
+    apiVersion: '1.0.0',
+    environment: process.env.NODE_ENV ?? 'development',
+    database: 'PostgreSQL',
+    uptime: 0,
+    totalUsers: 0,
+    totalOrgs: 0,
+  };
+}

@@ -568,7 +568,7 @@ export default function ProjectRootPage() {
                             ))}
                           </Pie>
                           <Tooltip
-                            formatter={(v: number, n: string) => [v, n]}
+                            formatter={(v: number | undefined, n: string | undefined) => [v ?? 0, n ?? '']}
                           />
                           <Legend iconType="circle" iconSize={8} />
                         </PieChart>
@@ -612,7 +612,7 @@ export default function ProjectRootPage() {
                             tick={{ fontSize: 11 }}
                           />
                           <Tooltip
-                            formatter={(v: number) => [v, 'Incidencias']}
+                            formatter={(v: number | undefined) => [v ?? 0, 'Incidencias']}
                           />
                           <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                             {priorityData.map((entry, i) => (
@@ -986,7 +986,7 @@ export default function ProjectRootPage() {
                             ))}
                           </Pie>
                           <Tooltip
-                            formatter={(v: number, n: string) => [v, n]}
+                            formatter={(v: number | undefined, n: string | undefined) => [v ?? 0, n ?? '']}
                           />
                           <Legend iconType="circle" iconSize={8} />
                         </PieChart>

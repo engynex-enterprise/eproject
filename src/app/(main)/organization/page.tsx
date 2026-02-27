@@ -7,12 +7,15 @@ import {
   Users,
   Shield,
   Palette,
-  KeyRound,
   Bell,
   HardDrive,
   Save,
   Upload,
   Loader2,
+  Activity,
+  Lock,
+  Wrench,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,45 +31,102 @@ import {
 } from '@/modules/organization/hooks/use-organization';
 import { cn } from '@/lib/utils';
 
-const sidebarNav = [
-  { title: 'General', href: '/organization', icon: Building2 },
-  { title: 'Miembros', href: '/organization/members', icon: Users },
-  { title: 'Roles y permisos', href: '/organization/roles', icon: Shield },
-  { title: 'Apariencia', href: '/organization/appearance', icon: Palette },
-  { title: 'SSO', href: '/organization/sso', icon: KeyRound },
-  { title: 'Notificaciones', href: '/organization/notifications', icon: Bell },
-  { title: 'Almacenamiento', href: '/organization/storage', icon: HardDrive },
+// ─── Sidebar Navigation ─────────────────────────────────────────────────────
+
+interface NavItem {
+  title: string;
+  href: string;
+  icon: React.ElementType;
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+export const sidebarNavGroups: NavGroup[] = [
+  {
+    label: 'Organización',
+    items: [
+      { title: 'General', href: '/organization', icon: Building2 },
+    ],
+  },
+  {
+    label: 'IAM',
+    items: [
+      { title: 'Personas', href: '/organization/members', icon: Users },
+      { title: 'Roles y permisos', href: '/organization/roles', icon: Shield },
+      { title: 'Auditoría', href: '/organization/audit', icon: Activity },
+    ],
+  },
+  {
+    label: 'Personalización',
+    items: [
+      { title: 'Apariencia', href: '/organization/appearance', icon: Palette },
+    ],
+  },
+  {
+    label: 'Seguridad',
+    items: [
+      { title: 'Seguridad', href: '/organization/security', icon: Lock },
+    ],
+  },
+  {
+    label: 'Comunicación',
+    items: [
+      { title: 'Notificaciones', href: '/organization/notifications', icon: Bell },
+    ],
+  },
+  {
+    label: 'Sistema',
+    items: [
+      { title: 'Avanzado', href: '/organization/advanced', icon: Wrench },
+      { title: 'Almacenamiento', href: '/organization/storage', icon: HardDrive },
+      { title: 'Plataforma', href: '/organization/platform', icon: Info },
+    ],
+  },
 ];
 
-function OrgSettingsSidebar() {
+// Keep for backwards compatibility
+export const sidebarNav = sidebarNavGroups.flatMap((g) => g.items);
+
+export function OrgSettingsSidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
   return (
-    <nav className="flex flex-col gap-1 w-full lg:w-56 shrink-0">
-      {sidebarNav.map((item) => {
-        const isActive = pathname === item.href;
-        return (
-          <button
-            key={item.href}
-            onClick={() => router.push(item.href)}
-            className={cn(
-              'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors text-left',
-              isActive
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-            )}
-          >
-            <item.icon className="size-4" />
-            {item.title}
-          </button>
-        );
-      })}
+    <nav className="flex flex-col gap-0.5 w-full lg:w-56 shrink-0">
+      {sidebarNavGroups.map((group, gi) => (
+        <div key={group.label} className={cn('flex flex-col gap-0.5', gi > 0 && 'mt-4')}>
+          <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+            {group.label}
+          </p>
+          {group.items.map((item) => {
+            const isActive =
+              item.href === '/organization'
+                ? pathname === item.href
+                : pathname === item.href || pathname.startsWith(item.href + '/');
+            return (
+              <button
+                key={item.href}
+                onClick={() => router.push(item.href)}
+                className={cn(
+                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors text-left',
+                  isActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
+              >
+                <item.icon className="size-4" />
+                {item.title}
+              </button>
+            );
+          })}
+        </div>
+      ))}
     </nav>
   );
 }
-
-export { OrgSettingsSidebar, sidebarNav };
 
 export default function OrganizationGeneralPage() {
   const { currentOrgId } = useAuthStore();

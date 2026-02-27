@@ -156,20 +156,23 @@ export default function AppearancePage() {
                 </div>
               </CardTitle>
               <CardDescription>
-                Sube el logo y favicon de tu organizacion.
+                Sube el logo para modo claro y modo oscuro de tu organizacion. Se usa la version correcta segun el tema activo.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Logo */}
+              {/* Logo — Modo claro */}
               <div className="space-y-2">
-                <Label>Logo</Label>
+                <div className="flex items-center gap-2">
+                  <Sun className="size-3.5 text-amber-500" />
+                  <Label>Logo — Modo claro</Label>
+                </div>
                 <div className="flex items-center gap-4">
-                  <div className="flex size-20 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/50 cursor-pointer hover:bg-muted transition-colors">
+                  <div className="flex size-20 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-white cursor-pointer hover:bg-zinc-50 transition-colors">
                     {appearance?.logoUrl ? (
                       <img
                         src={appearance.logoUrl}
-                        alt="Logo"
-                        className="size-20 rounded-lg object-cover"
+                        alt="Logo claro"
+                        className="size-20 rounded-lg object-contain p-1"
                       />
                     ) : (
                       <Upload className="size-6 text-muted-foreground" />
@@ -178,10 +181,48 @@ export default function AppearancePage() {
                   <div>
                     <Button type="button" variant="outline" size="sm">
                       <Upload className="size-4" />
-                      Subir logo
+                      Subir logo claro
                     </Button>
                     <p className="text-xs text-muted-foreground mt-1">
                       PNG, JPG o SVG. Recomendado 256x256px. Max 2MB.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Usa colores oscuros para que se vea bien en fondo blanco.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Logo — Modo oscuro */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Moon className="size-3.5 text-indigo-400" />
+                  <Label>Logo — Modo oscuro</Label>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex size-20 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-zinc-900 cursor-pointer hover:bg-zinc-800 transition-colors">
+                    {appearance?.logoUrl ? (
+                      <img
+                        src={appearance.logoUrl}
+                        alt="Logo oscuro"
+                        className="size-20 rounded-lg object-contain p-1"
+                      />
+                    ) : (
+                      <Upload className="size-6 text-zinc-500" />
+                    )}
+                  </div>
+                  <div>
+                    <Button type="button" variant="outline" size="sm">
+                      <Upload className="size-4" />
+                      Subir logo oscuro
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      PNG, JPG o SVG. Recomendado 256x256px. Max 2MB.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Usa colores claros o blancos para que se vea bien en fondo oscuro.
                     </p>
                   </div>
                 </div>
