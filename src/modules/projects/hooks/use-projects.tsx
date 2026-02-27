@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { sileo } from 'sileo';
+import { CircleCheck, CircleX, Trash2, UserPlus } from 'lucide-react';
 import {
   projectsService,
   type CreateProjectData,
@@ -38,10 +39,26 @@ export function useCreateProject(orgId: number) {
       projectsService.createProject(orgId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.list(orgId) });
-      sileo.success({ title: 'Proyecto creado correctamente' });
+      sileo.success({
+        title: 'Proyecto creado',
+        icon: <CircleCheck className="size-4" />,
+        description: (
+          <span className="text-xs!">
+            El proyecto se ha creado y esta listo para usar.
+          </span>
+        ),
+      });
     },
     onError: () => {
-      sileo.error({ title: 'Error al crear el proyecto', description: 'Inténtalo de nuevo.' });
+      sileo.error({
+        title: 'Error al crear el proyecto',
+        icon: <CircleX className="size-4" />,
+        description: (
+          <span className="text-xs!">
+            Intentalo de nuevo mas tarde.
+          </span>
+        ),
+      });
     },
   });
 }
@@ -59,10 +76,26 @@ export function useUpdateProject() {
     }) => projectsService.updateProject(projectId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.all });
-      sileo.success({ title: 'Proyecto actualizado' });
+      sileo.success({
+        title: 'Proyecto actualizado',
+        icon: <CircleCheck className="size-4" />,
+        description: (
+          <span className="text-xs!">
+            Los cambios se han guardado correctamente.
+          </span>
+        ),
+      });
     },
     onError: () => {
-      sileo.error({ title: 'Error al actualizar el proyecto' });
+      sileo.error({
+        title: 'Error al actualizar',
+        icon: <CircleX className="size-4" />,
+        description: (
+          <span className="text-xs!">
+            No se pudieron guardar los cambios.
+          </span>
+        ),
+      });
     },
   });
 }
@@ -75,10 +108,26 @@ export function useDeleteProject(orgId: number) {
       projectsService.deleteProject(projectId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.list(orgId) });
-      sileo.success({ title: 'Proyecto eliminado' });
+      sileo.success({
+        title: 'Proyecto eliminado',
+        icon: <Trash2 className="size-4" />,
+        description: (
+          <span className="text-xs!">
+            El proyecto ha sido eliminado permanentemente.
+          </span>
+        ),
+      });
     },
     onError: () => {
-      sileo.error({ title: 'Error al eliminar el proyecto' });
+      sileo.error({
+        title: 'Error al eliminar',
+        icon: <CircleX className="size-4" />,
+        description: (
+          <span className="text-xs!">
+            No se pudo eliminar el proyecto.
+          </span>
+        ),
+      });
     },
   });
 }
@@ -99,13 +148,29 @@ export function useAddProjectMember(orgId: number) {
       projectsService.addProjectMember(projectId, { userId, roleId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.all });
-      sileo.success({ title: 'Miembro añadido al proyecto' });
+      sileo.success({
+        title: 'Miembro añadido',
+        icon: <UserPlus className="size-4" />,
+        description: (
+          <span className="text-xs!">
+            El miembro ha sido añadido al proyecto.
+          </span>
+        ),
+      });
     },
     onError: (error: Error) => {
-      const msg = error?.message === 'Request failed with status code 409'
-        ? 'Este usuario ya es miembro del proyecto.'
-        : 'Error al añadir el miembro.';
-      sileo.error({ title: msg });
+      const is409 = error?.message === 'Request failed with status code 409';
+      sileo.error({
+        title: is409 ? 'Usuario duplicado' : 'Error al añadir miembro',
+        icon: <CircleX className="size-4" />,
+        description: (
+          <span className="text-xs!">
+            {is409
+              ? 'Este usuario ya es miembro del proyecto.'
+              : 'No se pudo añadir el miembro.'}
+          </span>
+        ),
+      });
     },
   });
 }

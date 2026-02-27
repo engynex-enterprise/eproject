@@ -94,7 +94,15 @@ export function NotificationBell() {
     mutationFn: markAllAsRead,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      sileo.info({ title: 'Notificaciones marcadas como leídas' });
+      sileo.info({
+        title: 'Notificaciones leidas',
+        icon: <CheckCheck className="size-4" />,
+        description: (
+          <span className="text-xs!">
+            Todas las notificaciones han sido marcadas como leidas.
+          </span>
+        ),
+      });
     },
   });
 

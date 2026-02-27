@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { sileo } from 'sileo';
-import { Plus } from 'lucide-react';
+import { Plus, Star, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   useProjects,
@@ -164,7 +164,15 @@ export default function ProjectsPage() {
       return next;
     });
     setSelectedIds(new Set());
-    sileo.success({ title: `${count} proyecto(s) actualizados` });
+    sileo.success({
+      title: 'Favoritos actualizados',
+      icon: <Star className="size-4" />,
+      description: (
+        <span className="text-xs!">
+          {count} proyecto(s) han sido actualizados.
+        </span>
+      ),
+    });
   }, [selectedIds]);
 
   const handleBulkArchive = useCallback(() => {
@@ -208,7 +216,15 @@ export default function ProjectsPage() {
     link.download = `proyectos-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    sileo.success({ title: 'Proyectos exportados', description: 'Archivo CSV descargado.' });
+    sileo.success({
+      title: 'Proyectos exportados',
+      icon: <Download className="size-4" />,
+      description: (
+        <span className="text-xs!">
+          Archivo CSV descargado correctamente.
+        </span>
+      ),
+    });
   }, [projects]);
 
   // Preview

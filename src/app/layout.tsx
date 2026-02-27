@@ -2,12 +2,11 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
-import { Toaster } from 'sileo';
-
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AccentColorProvider } from '@/shared/providers/accent-color-provider';
 import { QueryProvider } from '@/shared/providers/query-provider';
 import { ThemeProvider } from '@/shared/providers/theme-provider';
+import { ThemedToaster } from '@/shared/components/layout/themed-toaster';
 
 import './globals.css';
 
@@ -39,7 +38,7 @@ export default async function RootLayout({
               <AccentColorProvider>
                 <TooltipProvider>
                   {children}
-                  <Toaster position="top-right" />
+                  <ThemedToaster />
                 </TooltipProvider>
               </AccentColorProvider>
             </QueryProvider>
