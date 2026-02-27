@@ -19,7 +19,6 @@ import {
   googleAuthUrl,
   githubAuthUrl,
 } from "@/modules/auth/services/auth.service";
-import type { ApiError } from "@/shared/types";
 import { sileo } from "sileo";
 
 interface FormErrors {
@@ -64,10 +63,10 @@ export function LoginForm({
       await sileo.promise(loginMutation.mutateAsync({ email, password }), {
         loading: { title: 'Iniciando sesion...' },
         success: { title: 'Sesion iniciada' },
-        error: (err) => ({
+        error: {
           title: 'Error al iniciar sesion',
-          description: (err as ApiError)?.message || 'Credenciales invalidas',
-        }),
+          description: 'Correo electronico o contrasena incorrectos.',
+        },
       });
     } catch {
       // Error shown by sileo.promise
