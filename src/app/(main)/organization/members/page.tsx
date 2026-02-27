@@ -184,8 +184,16 @@ export default function MembersPage() {
   const cancelInvitation = useCancelInvitation(orgId);
 
   // ── Email configured check ──────────────────────────────────────────────────
-  const isEmailConfigured =
-    !!(notifConfig?.email?.enabled && notifConfig?.email?.smtpHost);
+  const isEmailConfigured = (() => {
+    if (!notifConfig?.emailEnabled) return false;
+    switch (notifConfig.emailProvider) {
+      case 'smtp':      return !!notifConfig.smtpHost;
+      case 'sendgrid':  return !!notifConfig.sendgridApiKey;
+      case 'aws_ses':   return !!(notifConfig.awsAccessKeyId && notifConfig.awsRegion);
+      case 'gmail':     return !!(notifConfig.gmailClientId && notifConfig.gmailRefreshToken);
+      default:          return false;
+    }
+  })();
 
   // ── View & sort ─────────────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<ViewMode>('table');
