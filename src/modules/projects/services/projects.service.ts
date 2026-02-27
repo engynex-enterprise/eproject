@@ -15,6 +15,14 @@ export interface ProjectIssueStats {
   todo: number;
 }
 
+export interface ProjectSpaceSummary {
+  id: number;
+  name: string;
+  key: string;
+  color: string | null;
+  iconName: string | null;
+}
+
 export interface ProjectListItem {
   id: number;
   name: string;
@@ -28,7 +36,9 @@ export interface ProjectListItem {
   memberCount: number;
   issueCount: number;
   sprintCount: number;
+  spaceCount: number;
   members: ProjectMemberSummary[];
+  spaces: ProjectSpaceSummary[];
   activeSprint: {
     id: number;
     name: string;

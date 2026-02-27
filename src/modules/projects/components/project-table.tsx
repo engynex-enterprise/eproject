@@ -100,6 +100,7 @@ export function ProjectTable({
             <TableHead>Nombre</TableHead>
             <TableHead className="hidden md:table-cell">Sprint</TableHead>
             <TableHead className="w-32">Progreso</TableHead>
+            <TableHead className="hidden lg:table-cell">Espacios</TableHead>
             <TableHead className="hidden sm:table-cell w-24 text-center">Incidencias</TableHead>
             <TableHead className="hidden lg:table-cell w-20 text-center">Sprints</TableHead>
             <TableHead className="hidden md:table-cell w-32">Miembros</TableHead>
@@ -193,6 +194,31 @@ export function ProjectTable({
                       {progressPercent}%
                     </span>
                   </div>
+                </TableCell>
+
+                {/* Spaces */}
+                <TableCell className="hidden lg:table-cell">
+                  {project.spaces.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {project.spaces.slice(0, 3).map((space) => (
+                        <Badge
+                          key={space.id}
+                          variant="outline"
+                          className="text-[10px] font-normal"
+                          style={space.color ? { borderColor: space.color, color: space.color } : undefined}
+                        >
+                          {space.name}
+                        </Badge>
+                      ))}
+                      {project.spaceCount > 3 && (
+                        <Badge variant="outline" className="text-[10px] font-normal">
+                          +{project.spaceCount - 3}
+                        </Badge>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
                 </TableCell>
 
                 {/* Issue count */}

@@ -19,8 +19,8 @@ import {
   Hash,
   Clock,
   CheckCircle2,
-  AlertCircle,
   Circle,
+  Layers,
 } from 'lucide-react';
 import type { ProjectListItem } from '../services/projects.service';
 import { Badge } from '@/components/ui/badge';
@@ -260,7 +260,32 @@ export function ProjectCard({
             </span>
           </div>
 
-          {/* Row 5: Members */}
+          {/* Row 5: Spaces */}
+          {project.spaces.length > 0 && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Layers className="size-3.5 shrink-0" />
+              <span className="font-medium shrink-0">Espacios:</span>
+              <div className="flex flex-wrap gap-1">
+                {project.spaces.slice(0, 4).map((space) => (
+                  <Badge
+                    key={space.id}
+                    variant="outline"
+                    className="gap-1 text-[10px] font-normal"
+                    style={space.color ? { borderColor: space.color, color: space.color } : undefined}
+                  >
+                    {space.name}
+                  </Badge>
+                ))}
+                {project.spaceCount > 4 && (
+                  <Badge variant="outline" className="text-[10px] font-normal">
+                    +{project.spaceCount - 4}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Row 6: Members */}
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Users className="size-3.5" />
             <span className="font-medium">Miembros:</span>
