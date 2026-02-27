@@ -28,6 +28,11 @@ export function OrgSwitcher() {
   const { currentOrg, currentOrgId, organizations, setCurrentOrg } =
     useCurrentOrg();
 
+  // Team orgs (non-personal) shown in the "Organizaciones" section
+  const teamOrgs = organizations.filter((o) => !o.isPersonal);
+  // Personal mode: no org selected OR selected org is personal
+  const isPersonalMode = currentOrg === null || currentOrg.isPersonal;
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -38,7 +43,7 @@ export function OrgSwitcher() {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                {currentOrg ? (
+                {!isPersonalMode ? (
                   <Building2 className="size-4" />
                 ) : (
                   <User className="size-4" />
@@ -46,10 +51,10 @@ export function OrgSwitcher() {
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">
-                  {currentOrg ? currentOrg.name : "Cuenta personal"}
+                  {!isPersonalMode ? currentOrg!.name : "Cuenta personal"}
                 </span>
                 <span className="truncate text-xs text-muted-foreground">
-                  {currentOrg ? currentOrg.slug : "Individual"}
+                  {!isPersonalMode ? currentOrg!.slug : "Individual"}
                 </span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
@@ -72,18 +77,18 @@ export function OrgSwitcher() {
                 <User className="size-3.5" />
               </div>
               <span>Cuenta personal</span>
-              {currentOrgId === null && (
+              {isPersonalMode && (
                 <Check className="ml-auto size-4" />
               )}
             </DropdownMenuItem>
 
-            {organizations.length > 0 && (
+            {teamOrgs.length > 0 && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-xs text-muted-foreground">
                   Organizaciones
                 </DropdownMenuLabel>
-                {organizations.map((org) => (
+                {teamOrgs.map((org) => (
                   <DropdownMenuItem
                     key={org.id}
                     onClick={() => setCurrentOrg(org.id)}

@@ -8,6 +8,7 @@ import { ProjectSettingsSidebar } from "@/modules/projects/components/project-se
 import { ProjectSidebar } from "@/modules/projects/components/project-sidebar";
 import { SiteHeader } from "@/shared/components/layout/site-header";
 import { useAuthStore } from "@/shared/stores/auth.store";
+import { useAuth } from "@/shared/hooks/use-auth";
 
 export default function MainLayout({
   children,
@@ -17,6 +18,7 @@ export default function MainLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
+  const { fetchCurrentUser } = useAuth();
 
   const isProjectSettings = /^\/projects\/[^/]+\/settings/.test(pathname);
   const isProjectRoute = /^\/projects\/[^/]+/.test(pathname) && !isProjectSettings;
@@ -27,9 +29,10 @@ export default function MainLayout({
       router.replace("/login");
     } else {
       useAuthStore.setState({ accessToken: token, isAuthenticated: true });
-      setIsChecking(false);
+      // Fetch user + orgs before rendering so the UI never shows stale state
+      fetchCurrentUser().finally(() => setIsChecking(false));
     }
-    // Run only on mount — router.replace is stable across renders
+    // Run only on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -15,17 +15,20 @@ import type {
 } from '@/shared/types';
 
 /**
- * Resolves which org to activate after fetching the org list.
- * - If localStorage has a saved org id → restore it (any org type).
+ * Resolves which team org to activate after fetching the org list.
+ * - If localStorage has an id matching a non-personal org → restore it.
  * - Otherwise → first non-personal org, or null (personal mode).
+ * Personal orgs are never set as currentOrgId; they are accessed via
+ * effectiveOrgId in consuming components.
  */
 function resolveOrgId(orgs: Organization[]): number | null {
   const storedId = localStorage.getItem('current_org_id');
   if (storedId) {
-    const match = orgs.find((o) => o.id === Number(storedId));
+    const match = orgs.find(
+      (o) => o.id === Number(storedId) && !o.isPersonal,
+    );
     if (match) return match.id;
   }
-  // Default: first non-personal org, or null if only personal org exists
   return orgs.find((o) => !o.isPersonal)?.id ?? null;
 }
 
@@ -98,7 +101,7 @@ export function useAuth() {
   // ── Fetch current user + organizations (used on app bootstrap) ───────
   const fetchCurrentUser = useCallback(async () => {
     try {
-      const res = await apiClient.get<ApiResponse<User>>('/auth/me');
+      const res = await apiClient.get<ApiResponse<User>>('/users/me');
       setUser(res.data);
 
       // Always re-fetch organizations on bootstrap so the store is populated
@@ -133,16 +136,6 @@ export function useAuth() {
     window.addEventListener('auth:logout', handler);
     return () => window.removeEventListener('auth:logout', handler);
   }, [storeLogout]);
-
-  // ── Hydrate on mount: fire whenever the user object is not yet loaded ─
-  useEffect(() => {
-    const storedToken = localStorage.getItem('access_token');
-    if (storedToken && !user) {
-      useAuthStore.setState({ accessToken: storedToken, isAuthenticated: true });
-      fetchCurrentUser();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return {
     user,
