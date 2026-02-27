@@ -20,6 +20,7 @@ import {
   githubAuthUrl,
 } from "@/modules/auth/services/auth.service";
 import type { ApiError } from "@/shared/types";
+import { sileo } from "sileo";
 
 interface FormErrors {
   email?: string;
@@ -56,15 +57,22 @@ export function LoginForm({
     return Object.keys(newErrors).length === 0;
   }
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!validate()) return;
-    loginMutation.mutate({ email, password });
+    try {
+      await sileo.promise(loginMutation.mutateAsync({ email, password }), {
+        loading: { title: 'Iniciando sesion...' },
+        success: { title: 'Sesion iniciada' },
+        error: (err) => ({
+          title: 'Error al iniciar sesion',
+          description: (err as ApiError)?.message || 'Credenciales invalidas',
+        }),
+      });
+    } catch {
+      // Error shown by sileo.promise
+    }
   }
-
-  const serverError = loginMutation.isError
-    ? (loginMutation.error as unknown as ApiError)?.message || "Error al iniciar sesion"
-    : null;
 
   return (
     <form
@@ -132,7 +140,6 @@ export function LoginForm({
           {errors.password && <FieldError>{errors.password}</FieldError>}
         </Field>
 
-        {serverError && <FieldError>{serverError}</FieldError>}
 
         <Field>
           <Button
