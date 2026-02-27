@@ -43,7 +43,6 @@ import {
   useSecurityConfig,
   useUpdateSecurityConfig,
 } from '@/modules/organization/hooks/use-organization';
-import { OrgSettingsSidebar } from '@/app/(main)/organization/page';
 
 export default function SecurityPage() {
   const { currentOrgId } = useAuthStore();
@@ -175,23 +174,18 @@ export default function SecurityPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col lg:flex-row gap-8 p-6">
-        <OrgSettingsSidebar />
-        <div className="flex-1 space-y-4">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-80" />
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-40 w-full" />
-          ))}
-        </div>
+      <div className="flex-1 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-80" />
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-40 w-full" />
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 p-6">
-      <OrgSettingsSidebar />
-      <div className="flex-1 max-w-2xl">
+    <div className="flex-1 max-w-2xl">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Seguridad</h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -575,7 +569,6 @@ export default function SecurityPage() {
           </Card>
 
         </div>
-      </div>
     </div>
   );
 }

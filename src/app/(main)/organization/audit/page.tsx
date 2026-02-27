@@ -43,7 +43,6 @@ import {
 } from '@/components/ui/tooltip';
 import { useAuthStore } from '@/shared/stores/auth.store';
 import { useAuditLog } from '@/modules/organization/hooks/use-organization';
-import { OrgSettingsSidebar } from '@/app/(main)/organization/page';
 import type { AuditFilters } from '@/modules/organization/services/organization.service';
 
 const ACTION_TYPES = [
@@ -128,9 +127,7 @@ export default function AuditPage() {
     : entries;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 p-6">
-      <OrgSettingsSidebar />
-      <div className="flex-1 max-w-4xl">
+    <div className="flex-1 max-w-4xl">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Auditoria</h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -291,7 +288,6 @@ export default function AuditPage() {
             )}
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }

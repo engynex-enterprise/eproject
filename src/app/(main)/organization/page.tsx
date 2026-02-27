@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
 import {
   Building2,
   Users,
@@ -29,7 +28,6 @@ import {
   useOrganization,
   useUpdateOrganization,
 } from '@/modules/organization/hooks/use-organization';
-import { cn } from '@/lib/utils';
 
 // ─── Sidebar Navigation ─────────────────────────────────────────────────────
 
@@ -90,44 +88,6 @@ export const sidebarNavGroups: NavGroup[] = [
 // Keep for backwards compatibility
 export const sidebarNav = sidebarNavGroups.flatMap((g) => g.items);
 
-export function OrgSettingsSidebar() {
-  const pathname = usePathname();
-  const router = useRouter();
-
-  return (
-    <nav className="flex flex-col gap-0.5 w-full lg:w-56 shrink-0">
-      {sidebarNavGroups.map((group, gi) => (
-        <div key={group.label} className={cn('flex flex-col gap-0.5', gi > 0 && 'mt-4')}>
-          <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
-            {group.label}
-          </p>
-          {group.items.map((item) => {
-            const isActive =
-              item.href === '/organization'
-                ? pathname === item.href
-                : pathname === item.href || pathname.startsWith(item.href + '/');
-            return (
-              <button
-                key={item.href}
-                onClick={() => router.push(item.href)}
-                className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors text-left',
-                  isActive
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                )}
-              >
-                <item.icon className="size-4" />
-                {item.title}
-              </button>
-            );
-          })}
-        </div>
-      ))}
-    </nav>
-  );
-}
-
 export default function OrganizationGeneralPage() {
   const { currentOrgId } = useAuthStore();
   const orgId = currentOrgId ?? 0;
@@ -158,16 +118,13 @@ export default function OrganizationGeneralPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col lg:flex-row gap-8 p-6">
-        <OrgSettingsSidebar />
-        <div className="flex-1 space-y-6">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-96" />
-          <div className="space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </div>
+      <div className="space-y-6 max-w-2xl">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-96" />
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-24 w-full" />
         </div>
       </div>
     );
@@ -175,25 +132,20 @@ export default function OrganizationGeneralPage() {
 
   if (isError) {
     return (
-      <div className="flex flex-col lg:flex-row gap-8 p-6">
-        <OrgSettingsSidebar />
-        <div className="flex-1">
-          <Card className="border-destructive">
-            <CardContent className="pt-6">
-              <p className="text-destructive text-sm">
-                Error al cargar la configuracion de la organizacion. Intenta de nuevo mas tarde.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="max-w-2xl">
+        <Card className="border-destructive">
+          <CardContent className="pt-6">
+            <p className="text-destructive text-sm">
+              Error al cargar la configuracion de la organizacion. Intenta de nuevo mas tarde.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 p-6">
-      <OrgSettingsSidebar />
-      <div className="flex-1 max-w-2xl">
+    <div className="max-w-2xl">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Configuracion general</h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -301,7 +253,6 @@ export default function OrganizationGeneralPage() {
             </Button>
           </div>
         </form>
-      </div>
     </div>
   );
 }

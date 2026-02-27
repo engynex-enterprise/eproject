@@ -28,7 +28,6 @@ import {
   useStorageConfig,
   useUpdateStorageConfig,
 } from '@/modules/organization/hooks/use-organization';
-import { OrgSettingsSidebar } from '@/app/(main)/organization/page';
 
 const fileTypeOptions = [
   { id: 'images', label: 'Imagenes', description: 'PNG, JPG, GIF, SVG, WEBP' },
@@ -91,38 +90,30 @@ export default function StoragePage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col lg:flex-row gap-8 p-6">
-        <OrgSettingsSidebar />
-        <div className="flex-1 space-y-4">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-80" />
-          <Skeleton className="h-48 w-full" />
-        </div>
+      <div className="flex-1 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-80" />
+        <Skeleton className="h-48 w-full" />
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="flex flex-col lg:flex-row gap-8 p-6">
-        <OrgSettingsSidebar />
-        <div className="flex-1">
-          <Card className="border-destructive">
-            <CardContent className="pt-6">
-              <p className="text-destructive text-sm">
-                Error al cargar la configuracion de almacenamiento.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="flex-1">
+        <Card className="border-destructive">
+          <CardContent className="pt-6">
+            <p className="text-destructive text-sm">
+              Error al cargar la configuracion de almacenamiento.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 p-6">
-      <OrgSettingsSidebar />
-      <div className="flex-1 max-w-2xl">
+    <div className="flex-1 max-w-2xl">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">
             Almacenamiento
@@ -289,7 +280,6 @@ export default function StoragePage() {
             </Button>
           </div>
         </div>
-      </div>
     </div>
   );
 }

@@ -23,7 +23,6 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlatformInfo } from '@/modules/organization/hooks/use-organization';
-import { OrgSettingsSidebar } from '@/app/(main)/organization/page';
 
 // ─── Tech Stack ──────────────────────────────────────────────────────────────
 
@@ -65,9 +64,7 @@ export default function PlatformPage() {
   const isApiHealthy = !!platform && platform.apiVersion !== '';
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 p-6">
-      <OrgSettingsSidebar />
-      <div className="flex-1 max-w-3xl">
+    <div className="flex-1 max-w-3xl">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Informacion de la plataforma</h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -241,7 +238,6 @@ export default function PlatformPage() {
           </Card>
 
         </div>
-      </div>
     </div>
   );
 }

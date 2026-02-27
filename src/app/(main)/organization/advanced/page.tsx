@@ -68,7 +68,6 @@ import {
   useCreateWebhook,
   useDeleteWebhook,
 } from '@/modules/organization/hooks/use-organization';
-import { OrgSettingsSidebar } from '@/app/(main)/organization/page';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -530,19 +529,16 @@ export default function AdvancedPage() {
   const orgId = currentOrgId ?? 0;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 p-6">
-      <OrgSettingsSidebar />
-      <div className="flex-1 max-w-3xl">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight">Avanzado</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Integraciones programaticas: API keys para acceso directo y webhooks para eventos en tiempo real.
-          </p>
-        </div>
-        <div className="space-y-6">
-          <ApiKeysSection orgId={orgId} />
-          <WebhooksSection orgId={orgId} />
-        </div>
+    <div className="flex-1 max-w-3xl">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight">Avanzado</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Integraciones programaticas: API keys para acceso directo y webhooks para eventos en tiempo real.
+        </p>
+      </div>
+      <div className="space-y-6">
+        <ApiKeysSection orgId={orgId} />
+        <WebhooksSection orgId={orgId} />
       </div>
     </div>
   );

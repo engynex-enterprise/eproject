@@ -44,7 +44,6 @@ import {
   useDeleteRole,
   usePermissions,
 } from '@/modules/organization/hooks/use-organization';
-import { OrgSettingsSidebar } from '@/app/(main)/organization/page';
 import type { Role, Permission } from '@/shared/types';
 import { cn } from '@/lib/utils';
 
@@ -182,25 +181,20 @@ export default function RolesPage() {
 
   if (rolesLoading) {
     return (
-      <div className="flex flex-col lg:flex-row gap-8 p-6">
-        <OrgSettingsSidebar />
-        <div className="flex-1 space-y-4">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-80" />
-          <div className="space-y-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full" />
-            ))}
-          </div>
+      <div className="flex-1 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-80" />
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full" />
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 p-6">
-      <OrgSettingsSidebar />
-      <div className="flex-1 max-w-5xl">
+    <div className="flex-1 max-w-5xl">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
@@ -455,7 +449,6 @@ export default function RolesPage() {
             )}
           </div>
         </div>
-      </div>
     </div>
   );
 }
