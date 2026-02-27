@@ -9,11 +9,14 @@ import {
   useDeleteProject,
 } from '@/modules/projects/hooks/use-projects';
 import { ProjectList } from '@/modules/projects/components/project-list';
+import { ProjectsToolbar } from '@/modules/projects/components/projects-toolbar';
 import { CreateProjectDialog } from '@/modules/projects/components/create-project-dialog';
+import { useAuthStore } from '@/shared/stores/auth.store';
 
 // TODO: Get orgId from auth context/store
 const ORG_ID = 1;
 const FAVORITES_KEY = 'eproject:favorite-projects';
+const VIEW_MODE_KEY = 'eproject:projects-view-mode';
 
 function loadFavorites(): Set<number> {
   if (typeof window === 'undefined') return new Set();
@@ -29,12 +32,24 @@ function saveFavorites(favs: Set<number>) {
   localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favs]));
 }
 
+function loadViewMode(): 'cards' | 'table' {
+  if (typeof window === 'undefined') return 'cards';
+  const stored = localStorage.getItem(VIEW_MODE_KEY);
+  return stored === 'table' ? 'table' : 'cards';
+}
+
 export default function ProjectsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [favorites, setFavorites] = useState<Set<number>>(loadFavorites);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'recent' | 'name' | 'progress'>('recent');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'archived'>('all');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>(loadViewMode);
+
   const { data, isLoading } = useProjects(ORG_ID);
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject(ORG_ID);
+  const currentUserId = useAuthStore((s) => s.user?.id);
 
   const handleToggleFavorite = useCallback((projectId: number) => {
     setFavorites((prev) => {
@@ -63,6 +78,11 @@ export default function ProjectsPage() {
     [deleteProject],
   );
 
+  const handleViewModeChange = useCallback((mode: 'cards' | 'table') => {
+    setViewMode(mode);
+    localStorage.setItem(VIEW_MODE_KEY, mode);
+  }, []);
+
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
@@ -78,10 +98,26 @@ export default function ProjectsPage() {
         </Button>
       </div>
 
+      <ProjectsToolbar
+        search={search}
+        onSearchChange={setSearch}
+        sortBy={sortBy}
+        onSortByChange={setSortBy}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
+      />
+
       <ProjectList
         projects={data?.data ?? []}
         isLoading={isLoading}
         favorites={favorites}
+        currentUserId={currentUserId ?? undefined}
+        viewMode={viewMode}
+        search={search}
+        sortBy={sortBy}
+        statusFilter={statusFilter}
         onToggleFavorite={handleToggleFavorite}
         onArchive={handleArchive}
         onDelete={handleDelete}
