@@ -15,6 +15,9 @@ import {
   Trash2,
   ChevronRight,
   IterationCcw,
+  Eye,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import type { ProjectListItem } from '../services/projects.service';
 import {
@@ -27,6 +30,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Avatar,
   AvatarFallback,
@@ -58,12 +62,20 @@ import {
 import { cn } from '@/lib/utils';
 import { useAccentColor } from '@/shared/providers/accent-color-provider';
 
+type SortColumn = 'name' | 'progress' | 'issues' | 'sprints' | 'members' | 'updated';
+type SortDir = 'asc' | 'desc';
+
 interface ProjectTableProps {
   projects: ProjectListItem[];
   favorites?: Set<number>;
+  selectedIds?: Set<number>;
+  onToggleSelect?: (projectId: number) => void;
+  onToggleSelectAll?: (projectIds: number[]) => void;
   onToggleFavorite?: (projectId: number) => void;
   onArchive?: (projectId: number) => void;
   onDelete?: (projectId: number) => void;
+  onPreview?: (project: ProjectListItem) => void;
+  onAddMember?: (project: ProjectListItem) => void;
 }
 
 function formatRelativeDate(dateStr: string): string {
@@ -80,37 +92,128 @@ function formatRelativeDate(dateStr: string): string {
   return `Hace ${Math.floor(diffDays / 365)} año${Math.floor(diffDays / 365) > 1 ? 's' : ''}`;
 }
 
+function SortableHead({
+  column,
+  currentSort,
+  currentDir,
+  onSort,
+  children,
+  className,
+}: {
+  column: SortColumn;
+  currentSort: SortColumn;
+  currentDir: SortDir;
+  onSort: (col: SortColumn) => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const isActive = currentSort === column;
+  return (
+    <TableHead
+      className={cn('cursor-pointer select-none hover:text-foreground', className)}
+      onClick={() => onSort(column)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        {isActive && (
+          currentDir === 'asc'
+            ? <ArrowUp className="size-3" />
+            : <ArrowDown className="size-3" />
+        )}
+      </div>
+    </TableHead>
+  );
+}
+
 export function ProjectTable({
   projects,
   favorites,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
   onToggleFavorite,
   onArchive,
   onDelete,
+  onPreview,
+  onAddMember,
 }: ProjectTableProps) {
   const router = useRouter();
   const { colors } = useAccentColor();
   const [deleteProject, setDeleteProject] = useState<ProjectListItem | null>(null);
+  const [sortCol, setSortCol] = useState<SortColumn>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const handleSort = (col: SortColumn) => {
+    if (sortCol === col) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCol(col);
+      setSortDir('asc');
+    }
+  };
+
+  const sorted = [...projects].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    switch (sortCol) {
+      case 'name': return a.name.localeCompare(b.name) * dir;
+      case 'progress': {
+        const pa = a.issueStats.total > 0 ? a.issueStats.done / a.issueStats.total : 0;
+        const pb = b.issueStats.total > 0 ? b.issueStats.done / b.issueStats.total : 0;
+        return (pa - pb) * dir;
+      }
+      case 'issues': return (a.issueCount - b.issueCount) * dir;
+      case 'sprints': return (a.sprintCount - b.sprintCount) * dir;
+      case 'members': return (a.memberCount - b.memberCount) * dir;
+      case 'updated':
+        return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * dir;
+      default: return 0;
+    }
+  });
+
+  const allSelected = sorted.length > 0 && sorted.every((p) => selectedIds?.has(p.id));
+  const someSelected = sorted.some((p) => selectedIds?.has(p.id)) && !allSelected;
 
   return (
     <>
       <Table>
         <TableHeader>
           <TableRow>
+            {/* Select all */}
+            <TableHead className="w-10">
+              <Checkbox
+                checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                onCheckedChange={() => onToggleSelectAll?.(sorted.map((p) => p.id))}
+                aria-label="Seleccionar todos"
+              />
+            </TableHead>
             <TableHead className="w-8" />
-            <TableHead>Nombre</TableHead>
+            <SortableHead column="name" currentSort={sortCol} currentDir={sortDir} onSort={handleSort}>
+              Nombre
+            </SortableHead>
             <TableHead className="hidden md:table-cell">Sprint</TableHead>
-            <TableHead className="w-32">Progreso</TableHead>
+            <SortableHead column="progress" currentSort={sortCol} currentDir={sortDir} onSort={handleSort} className="w-32">
+              Progreso
+            </SortableHead>
             <TableHead className="hidden lg:table-cell">Espacios</TableHead>
-            <TableHead className="hidden sm:table-cell w-24 text-center">Incidencias</TableHead>
-            <TableHead className="hidden lg:table-cell w-20 text-center">Sprints</TableHead>
-            <TableHead className="hidden md:table-cell w-32">Miembros</TableHead>
-            <TableHead className="hidden lg:table-cell w-28">Actualizado</TableHead>
+            <SortableHead column="issues" currentSort={sortCol} currentDir={sortDir} onSort={handleSort} className="hidden sm:table-cell w-24 text-center">
+              Incidencias
+            </SortableHead>
+            <SortableHead column="sprints" currentSort={sortCol} currentDir={sortDir} onSort={handleSort} className="hidden lg:table-cell w-20 text-center">
+              Sprints
+            </SortableHead>
+            <SortableHead column="members" currentSort={sortCol} currentDir={sortDir} onSort={handleSort} className="hidden md:table-cell w-32">
+              Miembros
+            </SortableHead>
+            <SortableHead column="updated" currentSort={sortCol} currentDir={sortDir} onSort={handleSort} className="hidden lg:table-cell w-28">
+              Actualizado
+            </SortableHead>
             <TableHead className="w-10" />
           </TableRow>
         </TableHeader>
         <TableBody>
-          {projects.map((project) => {
+          {sorted.map((project) => {
             const isFavorite = favorites?.has(project.id) ?? false;
+            const isSelected = selectedIds?.has(project.id) ?? false;
             const progressPercent =
               project.issueStats.total > 0
                 ? Math.round((project.issueStats.done / project.issueStats.total) * 100)
@@ -119,9 +222,21 @@ export function ProjectTable({
             return (
               <TableRow
                 key={project.id}
-                className="cursor-pointer"
+                className={cn('cursor-pointer', isSelected && 'bg-muted/50')}
                 onClick={() => router.push(`/projects/${project.key}/board`)}
               >
+                {/* Checkbox */}
+                <TableCell className="pr-0">
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={(e) => {
+                      onToggleSelect?.(project.id);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`Seleccionar ${project.name}`}
+                  />
+                </TableCell>
+
                 {/* Favorite star */}
                 <TableCell className="pr-0">
                   <button
@@ -285,6 +400,18 @@ export function ProjectTable({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
+                      {onPreview && (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() => onPreview(project)}
+                            className="gap-2"
+                          >
+                            <Eye className="size-4" />
+                            Vista rápida
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
                       <DropdownMenuItem
                         onClick={() => onToggleFavorite?.(project.id)}
                         className="gap-2"
@@ -298,7 +425,7 @@ export function ProjectTable({
                         {isFavorite ? 'Quitar de marcados' : 'Añadir a marcados'}
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => router.push(`/projects/${project.key}/settings/members`)}
+                        onClick={() => onAddMember?.(project)}
                         className="gap-2"
                       >
                         <UserPlus className="size-4" />

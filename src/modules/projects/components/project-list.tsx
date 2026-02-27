@@ -20,9 +20,14 @@ interface ProjectListProps {
   sortBy: SortBy;
   statusFilter: StatusFilter;
   healthFilter: HealthFilter;
+  selectedIds?: Set<number>;
+  onToggleSelect?: (projectId: number) => void;
+  onToggleSelectAll?: (projectIds: number[]) => void;
   onToggleFavorite?: (projectId: number) => void;
   onArchive?: (projectId: number) => void;
   onDelete?: (projectId: number) => void;
+  onPreview?: (project: ProjectListItem) => void;
+  onAddMember?: (project: ProjectListItem) => void;
 }
 
 interface ProjectGroup {
@@ -99,9 +104,14 @@ export function ProjectList({
   sortBy,
   statusFilter,
   healthFilter,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
   onToggleFavorite,
   onArchive,
   onDelete,
+  onPreview,
+  onAddMember,
 }: ProjectListProps) {
   const filtered = useMemo(() => {
     let result = projects;
@@ -244,6 +254,7 @@ export function ProjectList({
                   onToggleFavorite={onToggleFavorite}
                   onArchive={onArchive}
                   onDelete={onDelete}
+                  onAddMember={onAddMember}
                 />
               ))}
             </div>
@@ -252,9 +263,14 @@ export function ProjectList({
               <ProjectTable
                 projects={group.projects}
                 favorites={favorites}
+                selectedIds={selectedIds}
+                onToggleSelect={onToggleSelect}
+                onToggleSelectAll={onToggleSelectAll}
                 onToggleFavorite={onToggleFavorite}
                 onArchive={onArchive}
                 onDelete={onDelete}
+                onPreview={onPreview}
+                onAddMember={onAddMember}
               />
             </div>
           );

@@ -69,3 +69,31 @@ export function useDeleteProject(orgId: number) {
     },
   });
 }
+
+export function useSearchUsers(orgId: number, email: string) {
+  return useQuery({
+    queryKey: ['users', 'search', orgId, email],
+    queryFn: () => projectsService.searchUsers(orgId, email),
+    enabled: !!orgId && email.length >= 2,
+  });
+}
+
+export function useAddProjectMember(orgId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ projectId, userId, roleId }: { projectId: number; userId: number; roleId: number }) =>
+      projectsService.addProjectMember(projectId, { userId, roleId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
+    },
+  });
+}
+
+export function useProjectRoles(orgId: number) {
+  return useQuery({
+    queryKey: ['roles', 'all', orgId],
+    queryFn: () => projectsService.getRoles(orgId),
+    enabled: !!orgId,
+  });
+}

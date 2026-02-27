@@ -62,6 +62,7 @@ interface ProjectCardProps {
   onToggleFavorite?: (projectId: number) => void;
   onArchive?: (projectId: number) => void;
   onDelete?: (projectId: number) => void;
+  onAddMember?: (project: ProjectListItem) => void;
 }
 
 function formatRelativeDate(dateStr: string): string {
@@ -83,6 +84,7 @@ export function ProjectCard({
   onToggleFavorite,
   onArchive,
   onDelete,
+  onAddMember,
 }: ProjectCardProps) {
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -152,7 +154,7 @@ export function ProjectCard({
                     {isFavorite ? 'Quitar de marcados' : 'Añadir a marcados'}
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => router.push(`/projects/${project.key}/settings/members`)}
+                    onClick={() => onAddMember?.(project)}
                     className="gap-2"
                   >
                     <UserPlus className="size-4" />

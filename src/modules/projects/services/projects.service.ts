@@ -54,6 +54,37 @@ export interface CreateProjectData {
   name: string;
   key: string;
   description?: string;
+  leadId?: number;
+  iconUrl?: string;
+  category?: string;
+}
+
+export interface UserSearchResult {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+export interface ProjectMemberDetail {
+  id: number;
+  projectId: number;
+  userId: number;
+  roleId: number;
+  joinedAt: string;
+  isActive: boolean;
+  user: UserSearchResult;
+  role: { id: number; name: string; scope: string };
+}
+
+export interface ProjectRole {
+  id: number;
+  name: string;
+  description: string | null;
+  scope: string;
+  isSystem: boolean;
 }
 
 export interface UpdateProjectData {
@@ -102,5 +133,33 @@ export const projectsService = {
 
   deleteProject(projectId: number): Promise<void> {
     return apiClient.delete<void>(`/projects/${projectId}`);
+  },
+
+  searchUsers(orgId: number, email: string): Promise<ApiResponse<UserSearchResult[]>> {
+    return apiClient.get<ApiResponse<UserSearchResult[]>>(
+      `/users/search/${orgId}?email=${encodeURIComponent(email)}`,
+    );
+  },
+
+  addProjectMember(
+    projectId: number,
+    data: { userId: number; roleId: number },
+  ): Promise<ApiResponse<ProjectMemberDetail>> {
+    return apiClient.post<ApiResponse<ProjectMemberDetail>>(
+      `/projects/${projectId}/members`,
+      data,
+    );
+  },
+
+  getProjectMembers(projectId: number): Promise<ApiResponse<ProjectMemberDetail[]>> {
+    return apiClient.get<ApiResponse<ProjectMemberDetail[]>>(
+      `/projects/${projectId}/members`,
+    );
+  },
+
+  getRoles(orgId: number): Promise<ApiResponse<ProjectRole[]>> {
+    return apiClient.get<ApiResponse<ProjectRole[]>>(
+      `/organizations/${orgId}/roles/all`,
+    );
   },
 };

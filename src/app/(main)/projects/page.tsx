@@ -11,8 +11,12 @@ import {
 import { ProjectList } from '@/modules/projects/components/project-list';
 import { ProjectsToolbar } from '@/modules/projects/components/projects-toolbar';
 import { ProjectsDashboard } from '@/modules/projects/components/projects-dashboard';
+import { ProjectPreviewSheet } from '@/modules/projects/components/project-preview-sheet';
+import { BulkActionsBar } from '@/modules/projects/components/bulk-actions-bar';
 import { CreateProjectDialog } from '@/modules/projects/components/create-project-dialog';
+import { AddMemberDialog } from '@/modules/projects/components/add-member-dialog';
 import { useAuthStore } from '@/shared/stores/auth.store';
+import type { ProjectListItem } from '@/modules/projects/services/projects.service';
 import type {
   SortBy,
   StatusFilter,
@@ -46,7 +50,13 @@ function loadViewMode(): ViewMode {
 }
 
 export default function ProjectsPage() {
+  // Dialogs & sheets
   const [createOpen, setCreateOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [previewProject, setPreviewProject] = useState<ProjectListItem | null>(null);
+  const [addMemberProject, setAddMemberProject] = useState<ProjectListItem | null>(null);
+
+  // Filters & view
   const [favorites, setFavorites] = useState<Set<number>>(loadFavorites);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('recent');
@@ -54,6 +64,10 @@ export default function ProjectsPage() {
   const [healthFilter, setHealthFilter] = useState<HealthFilter>('all');
   const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
 
+  // Selection
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // Data
   const { data, isLoading } = useProjects(ORG_ID);
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject(ORG_ID);
@@ -61,6 +75,7 @@ export default function ProjectsPage() {
 
   const projects = data?.data ?? [];
 
+  // Filtered count for toolbar
   const filteredCount = useMemo(() => {
     let result = projects;
     if (search) {
@@ -84,14 +99,12 @@ export default function ProjectsPage() {
     return result.length;
   }, [projects, search, statusFilter, healthFilter]);
 
+  // Handlers
   const handleToggleFavorite = useCallback((projectId: number) => {
     setFavorites((prev) => {
       const next = new Set(prev);
-      if (next.has(projectId)) {
-        next.delete(projectId);
-      } else {
-        next.add(projectId);
-      }
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
       saveFavorites(next);
       return next;
     });
@@ -116,6 +129,57 @@ export default function ProjectsPage() {
     localStorage.setItem(VIEW_MODE_KEY, mode);
   }, []);
 
+  // Selection handlers
+  const handleToggleSelect = useCallback((projectId: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
+      return next;
+    });
+  }, []);
+
+  const handleToggleSelectAll = useCallback((projectIds: number[]) => {
+    setSelectedIds((prev) => {
+      const allSelected = projectIds.every((id) => prev.has(id));
+      if (allSelected) return new Set();
+      return new Set(projectIds);
+    });
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  // Bulk actions
+  const handleBulkFavorite = useCallback(() => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      for (const id of selectedIds) {
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+      }
+      saveFavorites(next);
+      return next;
+    });
+    setSelectedIds(new Set());
+  }, [selectedIds]);
+
+  const handleBulkArchive = useCallback(() => {
+    for (const id of selectedIds) {
+      updateProject.mutate({ projectId: id, data: { isArchived: true } });
+    }
+    setSelectedIds(new Set());
+  }, [selectedIds, updateProject]);
+
+  const handleBulkDelete = useCallback(() => {
+    for (const id of selectedIds) {
+      deleteProject.mutate(id);
+    }
+    setSelectedIds(new Set());
+  }, [selectedIds, deleteProject]);
+
+  // Export
   const handleExport = useCallback(() => {
     const csv = [
       ['Nombre', 'Clave', 'Incidencias', 'Completadas', 'En curso', 'Pendientes', 'Miembros', 'Sprints', 'Espacios', 'Actualizado'].join(','),
@@ -144,6 +208,16 @@ export default function ProjectsPage() {
     URL.revokeObjectURL(url);
   }, [projects]);
 
+  // Preview
+  const handlePreview = useCallback((project: ProjectListItem) => {
+    setPreviewProject(project);
+  }, []);
+
+  // Add member
+  const handleAddMember = useCallback((project: ProjectListItem) => {
+    setAddMemberProject(project);
+  }, []);
+
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
       {/* Header */}
@@ -154,10 +228,19 @@ export default function ProjectsPage() {
             Gestiona y accede a todos tus proyectos.
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="size-4" />
-          Crear proyecto
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setCommandOpen(true)} className="gap-2 text-muted-foreground">
+            <Search className="size-3.5" />
+            Buscar...
+            <kbd className="pointer-events-none ml-1 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:inline-flex">
+              <span className="text-xs">⌘</span>K
+            </kbd>
+          </Button>
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" />
+            Crear proyecto
+          </Button>
+        </div>
       </div>
 
       {/* Dashboard stats */}
@@ -191,14 +274,59 @@ export default function ProjectsPage() {
         sortBy={sortBy}
         statusFilter={statusFilter}
         healthFilter={healthFilter}
+        selectedIds={selectedIds}
+        onToggleSelect={handleToggleSelect}
+        onToggleSelectAll={handleToggleSelectAll}
         onToggleFavorite={handleToggleFavorite}
         onArchive={handleArchive}
         onDelete={handleDelete}
+        onPreview={handlePreview}
+        onAddMember={handleAddMember}
+      />
+
+      {/* Bulk actions floating bar */}
+      <BulkActionsBar
+        selectedCount={selectedIds.size}
+        onClearSelection={handleClearSelection}
+        onBulkFavorite={handleBulkFavorite}
+        onBulkArchive={handleBulkArchive}
+        onBulkDelete={handleBulkDelete}
+      />
+
+      {/* Command palette */}
+      <ProjectCommand
+        open={commandOpen}
+        onOpenChange={setCommandOpen}
+        projects={projects}
+        favorites={favorites}
+        onCreateProject={() => {
+          setCommandOpen(false);
+          setCreateOpen(true);
+        }}
+        onToggleFavorite={handleToggleFavorite}
+      />
+
+      {/* Preview sheet */}
+      <ProjectPreviewSheet
+        project={previewProject}
+        open={!!previewProject}
+        onOpenChange={(open) => !open && setPreviewProject(null)}
+        isFavorite={previewProject ? favorites.has(previewProject.id) : false}
+        onToggleFavorite={handleToggleFavorite}
       />
 
       <CreateProjectDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
+        orgId={ORG_ID}
+      />
+
+      {/* Add member dialog */}
+      <AddMemberDialog
+        open={!!addMemberProject}
+        onOpenChange={(open) => !open && setAddMemberProject(null)}
+        projectId={addMemberProject?.id ?? 0}
+        projectName={addMemberProject?.name ?? ''}
         orgId={ORG_ID}
       />
     </div>
