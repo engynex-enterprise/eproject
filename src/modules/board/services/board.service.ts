@@ -14,6 +14,7 @@ export interface BoardFilters {
   issueTypeId?: number;
   search?: string;
   sprintId?: number;
+  spaceId?: number;
 }
 
 export const boardService = {
@@ -26,6 +27,7 @@ export const boardService = {
     if (filters?.issueTypeId) params.set('issueTypeId', String(filters.issueTypeId));
     if (filters?.search) params.set('search', filters.search);
     if (filters?.sprintId) params.set('sprintId', String(filters.sprintId));
+    if (filters?.spaceId) params.set('spaceId', String(filters.spaceId));
 
     const qs = params.toString();
     return apiClient.get<ApiResponse<BoardData>>(

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/shared/components/layout/app-sidebar";
 import { ProjectSettingsSidebar } from "@/modules/projects/components/project-settings-sidebar";
+import { ProjectSidebar } from "@/modules/projects/components/project-sidebar";
 import { SiteHeader } from "@/shared/components/layout/site-header";
 import { useAuthStore } from "@/shared/stores/auth.store";
 
@@ -18,6 +19,7 @@ export default function MainLayout({
   const [isChecking, setIsChecking] = useState(true);
 
   const isProjectSettings = /^\/projects\/[^/]+\/settings/.test(pathname);
+  const isProjectRoute = /^\/projects\/[^/]+/.test(pathname) && !isProjectSettings;
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -51,7 +53,7 @@ export default function MainLayout({
 
   return (
     <SidebarProvider>
-      {isProjectSettings ? <ProjectSettingsSidebar /> : <AppSidebar />}
+      {isProjectSettings ? <ProjectSettingsSidebar /> : isProjectRoute ? <ProjectSidebar /> : <AppSidebar />}
       <SidebarInset>
         <SiteHeader />
         <main className="flex-1 p-4 md:p-6">{children}</main>
