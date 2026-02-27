@@ -113,7 +113,7 @@ export default function StoragePage() {
   }
 
   return (
-    <div className="flex-1 max-w-2xl">
+    <div className="flex-1 max-w-2xl pb-24">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">
             Almacenamiento
@@ -266,7 +266,17 @@ export default function StoragePage() {
             </CardContent>
           </Card>
 
-          <div className="flex justify-end">
+        </div>
+
+        {/* ── Fixed save bar ──────────────────────────────────────── */}
+        <div
+          className="fixed bottom-0 right-0 z-20 border-t bg-white/80 backdrop-blur-sm dark:bg-card/80"
+          style={{ left: 'var(--sidebar-width)' }}
+        >
+          <div className="mx-auto flex max-w-2xl items-center justify-between px-6 py-3">
+            <p className="text-xs text-muted-foreground">
+              Los cambios no se guardan automaticamente.
+            </p>
             <Button
               onClick={handleSave}
               disabled={updateStorage.isPending}

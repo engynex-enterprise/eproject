@@ -145,7 +145,7 @@ export default function OrganizationGeneralPage() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl pb-24">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Configuracion general</h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -153,7 +153,7 @@ export default function OrganizationGeneralPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form id="org-general-form" onSubmit={handleSubmit} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Informacion de la organizacion</CardTitle>
@@ -242,8 +242,22 @@ export default function OrganizationGeneralPage() {
             </CardContent>
           </Card>
 
-          <div className="flex justify-end">
-            <Button type="submit" disabled={updateOrg.isPending}>
+        </form>
+
+        {/* ── Fixed save bar ──────────────────────────────────────── */}
+        <div
+          className="fixed bottom-0 right-0 z-20 border-t bg-white/80 backdrop-blur-sm dark:bg-card/80"
+          style={{ left: 'var(--sidebar-width)' }}
+        >
+          <div className="mx-auto flex max-w-2xl items-center justify-between px-6 py-3">
+            <p className="text-xs text-muted-foreground">
+              Los cambios no se guardan automaticamente.
+            </p>
+            <Button
+              type="submit"
+              form="org-general-form"
+              disabled={updateOrg.isPending}
+            >
               {updateOrg.isPending ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
@@ -252,7 +266,7 @@ export default function OrganizationGeneralPage() {
               Guardar cambios
             </Button>
           </div>
-        </form>
+        </div>
     </div>
   );
 }
