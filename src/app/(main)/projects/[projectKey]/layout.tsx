@@ -37,6 +37,11 @@ export default function ProjectLayout({
   const project = data?.data;
 
   const basePath = `/projects/${params.projectKey}`;
+  const isSettings = pathname.startsWith(`${basePath}/settings`);
+
+  if (isSettings) {
+    return <div className="flex flex-1 flex-col overflow-auto">{children}</div>;
+  }
 
   const tabs: NavTab[] = [
     { label: 'Tablero', href: `${basePath}/board`, icon: LayoutGrid },

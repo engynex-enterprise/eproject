@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/shared/components/layout/app-sidebar";
+import { ProjectSettingsSidebar } from "@/modules/projects/components/project-settings-sidebar";
 import { SiteHeader } from "@/shared/components/layout/site-header";
 import { useAuthStore } from "@/shared/stores/auth.store";
 
@@ -13,7 +14,10 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
+
+  const isProjectSettings = /^\/projects\/[^/]+\/settings/.test(pathname);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -47,7 +51,7 @@ export default function MainLayout({
 
   return (
     <SidebarProvider>
-      <AppSidebar />
+      {isProjectSettings ? <ProjectSettingsSidebar /> : <AppSidebar />}
       <SidebarInset>
         <SiteHeader />
         <main className="flex-1 p-4 md:p-6">{children}</main>
