@@ -9,7 +9,6 @@ import {
   Bell,
   HardDrive,
   Save,
-  Upload,
   Loader2,
   Activity,
   Lock,
@@ -23,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/shared/stores/auth.store';
 import {
   useOrganization,
@@ -118,21 +118,19 @@ export default function OrganizationGeneralPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 max-w-2xl">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-4 w-96" />
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-24 w-full" />
+      <div className="mx-auto max-w-2xl space-y-6 pb-24">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-48" />
+          <Skeleton className="h-4 w-72" />
         </div>
+        <Skeleton className="h-56 w-full rounded-xl" />
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="max-w-2xl">
+      <div className="mx-auto max-w-2xl">
         <Card className="border-destructive">
           <CardContent className="pt-6">
             <p className="text-destructive text-sm">
@@ -145,128 +143,120 @@ export default function OrganizationGeneralPage() {
   }
 
   return (
-    <div className="max-w-2xl pb-24">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight">Configuracion general</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Administra la informacion basica de tu organizacion.
-          </p>
-        </div>
+    <div className="mx-auto max-w-2xl space-y-8 pb-24">
+      {/* Page header */}
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold tracking-tight">Configuracion general</h2>
+        <p className="text-sm text-muted-foreground">
+          Administra la informacion basica de tu organizacion.
+        </p>
+      </div>
 
-        <form id="org-general-form" onSubmit={handleSubmit} className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Informacion de la organizacion</CardTitle>
-              <CardDescription>
-                Estos datos se mostraran en toda la plataforma.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Logo Upload */}
-              <div className="space-y-2">
-                <Label>Logo</Label>
-                <div className="flex items-center gap-4">
-                  <div className="flex size-16 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/50">
-                    {org?.logoUrl ? (
-                      <img
-                        src={org.logoUrl}
-                        alt="Logo"
-                        className="size-16 rounded-lg object-cover"
-                      />
-                    ) : (
-                      <Upload className="size-6 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div>
-                    <Button type="button" variant="outline" size="sm">
-                      <Upload className="size-4" />
-                      Subir logo
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      PNG, JPG o SVG. Max 2MB.
-                    </p>
-                  </div>
+      <form id="org-general-form" onSubmit={handleSubmit} className="space-y-6">
+        {/* Información básica */}
+        <Card className="bg-white shadow-sm dark:bg-card">
+          <CardHeader>
+            <CardTitle className="text-sm">Informacion de la organizacion</CardTitle>
+            <CardDescription>
+              Los datos basicos que identifican tu organizacion en la plataforma.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* Name */}
+            <div className="grid gap-2 sm:grid-cols-[160px_1fr] sm:items-center">
+              <Label htmlFor="org-name" className="text-sm text-muted-foreground">
+                Nombre <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="org-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Mi organizacion"
+                required
+              />
+            </div>
+
+            <Separator />
+
+            {/* Slug (read-only) */}
+            <div className="grid gap-2 sm:grid-cols-[160px_1fr] sm:items-start">
+              <Label className="text-sm text-muted-foreground pt-2.5">Slug</Label>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={org?.slug ?? ''}
+                    disabled
+                    className="font-mono bg-muted max-w-xs"
+                  />
+                  <Badge variant="secondary" className="shrink-0">
+                    Solo lectura
+                  </Badge>
                 </div>
-              </div>
-
-              <Separator />
-
-              {/* Name */}
-              <div className="space-y-2">
-                <Label htmlFor="org-name">Nombre de la organizacion</Label>
-                <Input
-                  id="org-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Mi organizacion"
-                />
-              </div>
-
-              {/* Slug (read-only) */}
-              <div className="space-y-2">
-                <Label htmlFor="org-slug">Slug</Label>
-                <Input
-                  id="org-slug"
-                  value={org?.slug ?? ''}
-                  disabled
-                  className="bg-muted"
-                />
                 <p className="text-xs text-muted-foreground">
-                  El slug se genera automaticamente y no se puede cambiar.
+                  Identificador unico generado automaticamente. No se puede modificar.
                 </p>
               </div>
+            </div>
 
-              {/* Description */}
-              <div className="space-y-2">
-                <Label htmlFor="org-description">Descripcion</Label>
-                <Textarea
-                  id="org-description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe tu organizacion..."
-                  rows={3}
-                />
-              </div>
+            <Separator />
 
-              {/* Website */}
-              <div className="space-y-2">
-                <Label htmlFor="org-website">Sitio web</Label>
-                <Input
-                  id="org-website"
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="https://ejemplo.com"
-                  type="url"
-                />
-              </div>
-            </CardContent>
-          </Card>
+            {/* Description */}
+            <div className="grid gap-2 sm:grid-cols-[160px_1fr] sm:items-start">
+              <Label htmlFor="org-description" className="text-sm text-muted-foreground pt-2.5">
+                Descripcion
+              </Label>
+              <Textarea
+                id="org-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe brevemente tu organizacion..."
+                rows={3}
+                className="resize-none"
+              />
+            </div>
 
-        </form>
+            <Separator />
 
-        {/* ── Fixed save bar ──────────────────────────────────────── */}
-        <div
-          className="fixed bottom-0 right-0 z-20 border-t bg-white/80 backdrop-blur-sm dark:bg-card/80"
-          style={{ left: 'var(--sidebar-width)' }}
-        >
-          <div className="mx-auto flex max-w-2xl items-center justify-between px-6 py-3">
-            <p className="text-xs text-muted-foreground">
-              Los cambios no se guardan automaticamente.
-            </p>
-            <Button
-              type="submit"
-              form="org-general-form"
-              disabled={updateOrg.isPending}
-            >
-              {updateOrg.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Save className="size-4" />
-              )}
-              Guardar cambios
-            </Button>
-          </div>
+            {/* Website */}
+            <div className="grid gap-2 sm:grid-cols-[160px_1fr] sm:items-center">
+              <Label htmlFor="org-website" className="text-sm text-muted-foreground">
+                Sitio web
+              </Label>
+              <Input
+                id="org-website"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                placeholder="https://ejemplo.com"
+                type="url"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </form>
+
+      {/* ── Fixed save bar ──────────────────────────────────────── */}
+      <div
+        className="fixed bottom-0 right-0 z-20 border-t bg-white/80 backdrop-blur-sm dark:bg-card/80"
+        style={{ left: 'var(--sidebar-width)' }}
+      >
+        <div className="mx-auto flex max-w-2xl items-center justify-between px-6 py-3">
+          <p className="text-xs text-muted-foreground">
+            Los cambios no se guardan automaticamente.
+          </p>
+          <Button
+            type="submit"
+            form="org-general-form"
+            disabled={updateOrg.isPending || !name.trim()}
+          >
+            {updateOrg.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Save className="size-4" />
+            )}
+            Guardar cambios
+          </Button>
         </div>
+      </div>
     </div>
   );
 }
