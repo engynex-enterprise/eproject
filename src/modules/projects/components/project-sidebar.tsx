@@ -3,7 +3,7 @@
 import { createElement, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, Layers, Settings, UserPlus } from 'lucide-react';
+import { ArrowLeft, Plus, Layers, Settings, UserPlus, LayoutDashboard } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -49,10 +49,10 @@ export function ProjectSidebar() {
     <>
       <Sidebar>
         <SidebarHeader className="gap-0 p-0">
-          {/* Back to projects */}
+          {/* Back to projects — same height as the global header (h-14) */}
           <Button
             variant="ghost"
-            className="h-auto justify-start gap-2 rounded-none px-4 py-3 text-sm font-medium"
+            className="h-14 w-full justify-start gap-2 rounded-none px-4 text-sm font-medium"
             onClick={() => router.push('/projects')}
           >
             <ArrowLeft className="size-4" />
@@ -93,6 +93,24 @@ export function ProjectSidebar() {
         </SidebarHeader>
 
         <SidebarContent>
+          {/* Dashboard link */}
+          <SidebarGroup className="pb-0">
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  tooltip="Dashboard del proyecto"
+                  isActive={pathname === basePath}
+                >
+                  <Link href={basePath}>
+                    <LayoutDashboard className="size-4" />
+                    <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+
           <SidebarGroup>
             <SidebarGroupLabel>Espacios</SidebarGroupLabel>
             <SidebarMenu>
