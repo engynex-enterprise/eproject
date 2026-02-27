@@ -40,7 +40,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -48,6 +47,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Tooltip,
   TooltipContent,
@@ -89,6 +90,7 @@ export function ProjectCard({
 }: ProjectCardProps) {
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
   const { colors } = useAccentColor();
 
   const handleClick = () => {
@@ -332,24 +334,48 @@ export function ProjectCard({
       </div>
 
       {/* Delete confirmation dialog */}
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          setDeleteOpen(open);
+          if (!open) setDeleteConfirm('');
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Borrar proyecto</AlertDialogTitle>
             <AlertDialogDescription>
-              ¿Estás seguro de que deseas borrar el proyecto{' '}
-              <strong>{project.name}</strong>? Esta acción no se puede deshacer
-              y se eliminarán todas las incidencias, sprints y datos asociados.
+              Esta accion no se puede deshacer y se eliminaran todas las
+              incidencias, sprints y datos asociados al proyecto{' '}
+              <strong>{project.name}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="delete-confirm-card">
+              Escribe <strong className="font-mono text-destructive">{project.key}</strong> para confirmar
+            </Label>
+            <Input
+              id="delete-confirm-card"
+              placeholder={project.key}
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value.toUpperCase())}
+              autoComplete="off"
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => onDelete?.(project.id)}
+            <Button
+              variant="destructive"
+              disabled={deleteConfirm !== project.key}
+              onClick={() => {
+                onDelete?.(project.id);
+                setDeleteOpen(false);
+                setDeleteConfirm('');
+              }}
             >
+              <Trash2 className="size-4" />
               Borrar proyecto
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

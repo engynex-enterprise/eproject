@@ -46,7 +46,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -54,6 +53,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Tooltip,
   TooltipContent,
@@ -141,6 +142,7 @@ export function ProjectTable({
   const router = useRouter();
   const { colors } = useAccentColor();
   const [deleteProject, setDeleteProject] = useState<ProjectListItem | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
   const [sortCol, setSortCol] = useState<SortColumn>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
@@ -472,27 +474,50 @@ export function ProjectTable({
       </Table>
 
       {/* Delete confirmation dialog */}
-      <AlertDialog open={!!deleteProject} onOpenChange={(open) => !open && setDeleteProject(null)}>
+      <AlertDialog
+        open={!!deleteProject}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteProject(null);
+            setDeleteConfirm('');
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Borrar proyecto</AlertDialogTitle>
             <AlertDialogDescription>
-              ¿Estás seguro de que deseas borrar el proyecto{' '}
-              <strong>{deleteProject?.name}</strong>? Esta acción no se puede deshacer
-              y se eliminarán todas las incidencias, sprints y datos asociados.
+              Esta accion no se puede deshacer y se eliminaran todas las
+              incidencias, sprints y datos asociados al proyecto{' '}
+              <strong>{deleteProject?.name}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="delete-confirm-table">
+              Escribe <strong className="font-mono text-destructive">{deleteProject?.key}</strong> para confirmar
+            </Label>
+            <Input
+              id="delete-confirm-table"
+              placeholder={deleteProject?.key ?? ''}
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value.toUpperCase())}
+              autoComplete="off"
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            <Button
+              variant="destructive"
+              disabled={deleteConfirm !== deleteProject?.key}
               onClick={() => {
                 if (deleteProject) onDelete?.(deleteProject.id);
                 setDeleteProject(null);
+                setDeleteConfirm('');
               }}
             >
+              <Trash2 className="size-4" />
               Borrar proyecto
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

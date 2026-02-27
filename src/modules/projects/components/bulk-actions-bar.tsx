@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { Archive, Star, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -13,6 +15,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+
+const BULK_DELETE_KEYWORD = 'BORRAR';
 
 interface BulkActionsBarProps {
   selectedCount: number;
@@ -29,6 +33,9 @@ export function BulkActionsBar({
   onBulkArchive,
   onBulkDelete,
 }: BulkActionsBarProps) {
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   if (selectedCount === 0) return null;
 
   return (
@@ -49,7 +56,13 @@ export function BulkActionsBar({
         Archivar
       </Button>
 
-      <AlertDialog>
+      <AlertDialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setDeleteConfirm('');
+        }}
+      >
         <AlertDialogTrigger asChild>
           <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive">
             <Trash2 className="size-3.5" />
@@ -58,21 +71,41 @@ export function BulkActionsBar({
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Borrar {selectedCount} proyectos</AlertDialogTitle>
+            <AlertDialogTitle>
+              Borrar {selectedCount} {selectedCount === 1 ? 'proyecto' : 'proyectos'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              ¿Estás seguro de que deseas borrar {selectedCount}{' '}
-              {selectedCount === 1 ? 'proyecto' : 'proyectos'}? Esta acción no se puede
-              deshacer y se eliminarán todas las incidencias, sprints y datos asociados.
+              Esta accion no se puede deshacer y se eliminaran todas las
+              incidencias, sprints y datos asociados de {selectedCount}{' '}
+              {selectedCount === 1 ? 'proyecto' : 'proyectos'}.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="delete-confirm-bulk">
+              Escribe <strong className="font-mono text-destructive">{BULK_DELETE_KEYWORD}</strong> para confirmar
+            </Label>
+            <Input
+              id="delete-confirm-bulk"
+              placeholder={BULK_DELETE_KEYWORD}
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value.toUpperCase())}
+              autoComplete="off"
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={onBulkDelete}
+            <Button
+              variant="destructive"
+              disabled={deleteConfirm !== BULK_DELETE_KEYWORD}
+              onClick={() => {
+                onBulkDelete();
+                setDialogOpen(false);
+                setDeleteConfirm('');
+              }}
             >
-              Borrar {selectedCount} proyectos
-            </AlertDialogAction>
+              <Trash2 className="size-4" />
+              Borrar {selectedCount} {selectedCount === 1 ? 'proyecto' : 'proyectos'}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
