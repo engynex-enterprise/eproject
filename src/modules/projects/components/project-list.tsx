@@ -8,15 +8,18 @@ import { cn } from '@/lib/utils';
 import { ProjectCard } from './project-card';
 import { ProjectTable } from './project-table';
 
+import type { SortBy, StatusFilter, HealthFilter, ViewMode } from './projects-toolbar';
+
 interface ProjectListProps {
   projects: ProjectListItem[];
   isLoading?: boolean;
   favorites?: Set<number>;
   currentUserId?: number;
-  viewMode: 'cards' | 'table';
+  viewMode: ViewMode;
   search: string;
-  sortBy: 'recent' | 'name' | 'progress';
-  statusFilter: 'all' | 'active' | 'archived';
+  sortBy: SortBy;
+  statusFilter: StatusFilter;
+  healthFilter: HealthFilter;
   onToggleFavorite?: (projectId: number) => void;
   onArchive?: (projectId: number) => void;
   onDelete?: (projectId: number) => void;
@@ -31,7 +34,7 @@ interface ProjectGroup {
 
 function sortProjects(
   projects: ProjectListItem[],
-  sortBy: 'recent' | 'name' | 'progress',
+  sortBy: SortBy,
 ): ProjectListItem[] {
   return [...projects].sort((a, b) => {
     if (sortBy === 'name') return a.name.localeCompare(b.name);
@@ -40,8 +43,18 @@ function sortProjects(
       const progB = b.issueStats.total > 0 ? b.issueStats.done / b.issueStats.total : 0;
       return progB - progA;
     }
+    if (sortBy === 'issues') return b.issueCount - a.issueCount;
+    if (sortBy === 'members') return b.memberCount - a.memberCount;
     return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
   });
+}
+
+function getProjectHealthCategory(project: ProjectListItem): HealthFilter {
+  if (project.issueStats.total === 0) return 'no-issues';
+  const ratio = project.issueStats.done / project.issueStats.total;
+  if (ratio >= 0.7) return 'healthy';
+  if (ratio >= 0.3) return 'at-risk';
+  return 'critical';
 }
 
 function CollapsibleSection({
@@ -85,6 +98,7 @@ export function ProjectList({
   search,
   sortBy,
   statusFilter,
+  healthFilter,
   onToggleFavorite,
   onArchive,
   onDelete,
@@ -109,8 +123,13 @@ export function ProjectList({
       result = result.filter((p) => !p.isActive);
     }
 
+    // Health filter
+    if (healthFilter !== 'all') {
+      result = result.filter((p) => getProjectHealthCategory(p) === healthFilter);
+    }
+
     return result;
-  }, [projects, search, statusFilter]);
+  }, [projects, search, statusFilter, healthFilter]);
 
   const groups = useMemo(() => {
     const sorted = sortProjects(filtered, sortBy);
