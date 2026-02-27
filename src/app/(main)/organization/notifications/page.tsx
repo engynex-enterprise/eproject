@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, Loader2, Smartphone, MessageSquare, Bell, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
+import { Save, Loader2, Smartphone, MessageSquare, Bell, Eye, EyeOff, ChevronDown, ChevronUp, Sparkles, RotateCcw } from 'lucide-react';
+import { sileo } from 'sileo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,8 +13,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import { useAuthStore } from '@/shared/stores/auth.store';
 import { useNotificationConfig, useUpdateNotificationConfig } from '@/modules/organization/hooks/use-organization';
+import { useSileoConfigStore, type SileoPosition, type SileoTheme } from '@/shared/stores/sileo-config.store';
 import type { EmailTemplate } from '@/modules/organization/services/organization.service';
 
 // ─── Provider definitions ─────────────────────────────────────────────────────
@@ -75,6 +78,248 @@ const TEMPLATE_DEFS = [
   { key: 'report',             label: 'Informes periodicos',               description: 'Correo de resumen o informe de actividad',            variables: ['{{name}}', '{{reportContent}}', '{{orgName}}'] },
   { key: 'custom',             label: 'Plantilla personalizada',           description: 'Plantilla libre para usos adicionales',               variables: ['{{name}}', '{{message}}', '{{orgName}}'] },
 ] as const;
+
+// ─── Sileo config section ─────────────────────────────────────────────────────
+
+const POSITIONS: { id: SileoPosition; label: string; row: number; col: number }[] = [
+  { id: 'top-left',      label: 'Arriba izq.',    row: 0, col: 0 },
+  { id: 'top-center',    label: 'Arriba centro',  row: 0, col: 1 },
+  { id: 'top-right',     label: 'Arriba der.',    row: 0, col: 2 },
+  { id: 'bottom-left',   label: 'Abajo izq.',     row: 1, col: 0 },
+  { id: 'bottom-center', label: 'Abajo centro',   row: 1, col: 1 },
+  { id: 'bottom-right',  label: 'Abajo der.',     row: 1, col: 2 },
+];
+
+const THEMES: { id: SileoTheme; label: string; description: string }[] = [
+  { id: 'system', label: 'Sistema',  description: 'Sigue el tema de la plataforma' },
+  { id: 'light',  label: 'Claro',    description: 'Siempre fondo oscuro (contraste)' },
+  { id: 'dark',   label: 'Oscuro',   description: 'Siempre fondo claro' },
+];
+
+function SileoConfigSection() {
+  const { config, updateConfig, resetConfig } = useSileoConfigStore();
+
+  const durationLabel =
+    config.duration === null
+      ? 'Nunca'
+      : config.duration < 1000
+      ? `${config.duration} ms`
+      : `${(config.duration / 1000).toFixed(1).replace('.0', '')} s`;
+
+  const firePreview = () => {
+    sileo.success({
+      title: 'Notificacion de prueba',
+      description: `Posicion: ${config.position} · Duracion: ${durationLabel}`,
+    });
+  };
+
+  return (
+    <div className="grid gap-x-10 gap-y-6 md:grid-cols-[220px_1fr]">
+      {/* Left label */}
+      <div className="space-y-1.5">
+        <h3 className="text-sm font-semibold">Alertas visuales</h3>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Personaliza como y donde aparecen las notificaciones emergentes en pantalla. Se guarda automaticamente en este dispositivo.
+        </p>
+        <Button variant="ghost" size="sm" className="mt-2 gap-1.5 text-muted-foreground" onClick={resetConfig}>
+          <RotateCcw className="size-3.5" />
+          Restablecer
+        </Button>
+      </div>
+
+      {/* Right: cards */}
+      <div className="space-y-6">
+
+        {/* ── Position ──────────────────────────────────────────── */}
+        <Card className="shadow-sm bg-white dark:bg-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Posicion</CardTitle>
+            <CardDescription>Esquina de la pantalla donde apareceran las alertas.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* 3×2 visual grid */}
+            <div className="relative mx-auto w-full max-w-xs aspect-video rounded-lg border-2 border-dashed border-border bg-muted/30 p-2">
+              {/* Screen label */}
+              <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-muted-foreground/50 uppercase tracking-widest select-none">
+                Pantalla
+              </span>
+              {POSITIONS.map((p) => {
+                const active = config.position === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    title={p.label}
+                    onClick={() => updateConfig({ position: p.id })}
+                    style={{
+                      position: 'absolute',
+                      top:    p.row === 0 ? '6px'  : undefined,
+                      bottom: p.row === 1 ? '6px'  : undefined,
+                      left:   p.col === 0 ? '6px'  : p.col === 1 ? '50%' : undefined,
+                      right:  p.col === 2 ? '6px'  : undefined,
+                      transform: p.col === 1 ? 'translateX(-50%)' : undefined,
+                    }}
+                    className={`w-14 rounded px-1.5 py-1 text-[9px] font-semibold leading-tight transition-all ${
+                      active
+                        ? 'bg-primary text-primary-foreground shadow-md scale-105'
+                        : 'bg-background/80 text-muted-foreground border border-border hover:bg-muted hover:text-foreground'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Theme ─────────────────────────────────────────────── */}
+        <Card className="shadow-sm bg-white dark:bg-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Tema de las alertas</CardTitle>
+            <CardDescription>Color de fondo de los toasts independiente del tema de la app.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {THEMES.map((t) => {
+                const active = config.theme === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => updateConfig({ theme: t.id })}
+                    className={`flex items-start gap-2.5 rounded-xl border p-3.5 text-left transition-all ${
+                      active
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                        : 'border-border bg-white dark:bg-card hover:border-muted-foreground/30 hover:bg-muted/20'
+                    }`}
+                  >
+                    <div className={`mt-0.5 flex size-3.5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${active ? 'border-primary' : 'border-muted-foreground/40'}`}>
+                      {active && <span className="size-1.5 rounded-full bg-primary block" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium leading-tight">{t.label}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground leading-snug">{t.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Duration + Roundness ───────────────────────────────── */}
+        <Card className="shadow-sm bg-white dark:bg-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Comportamiento</CardTitle>
+            <CardDescription>Tiempo en pantalla y radio de los bordes.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Duration slider */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Duracion</Label>
+                <span className="text-sm font-semibold tabular-nums text-primary min-w-[3rem] text-right">
+                  {durationLabel}
+                </span>
+              </div>
+              <Slider
+                min={0}
+                max={16}
+                step={1}
+                value={[
+                  config.duration === null
+                    ? 16
+                    : Math.round(config.duration / 1000),
+                ]}
+                onValueChange={([v]) =>
+                  updateConfig({ duration: v === 16 ? null : v * 1000 })
+                }
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>0 s</span>
+                <span>8 s</span>
+                <span>Nunca</span>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Roundness slider */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Redondez</Label>
+                <span className="text-sm font-semibold tabular-nums text-primary min-w-[3rem] text-right">
+                  {config.roundness} px
+                </span>
+              </div>
+              <Slider
+                min={0}
+                max={24}
+                step={1}
+                value={[config.roundness]}
+                onValueChange={([v]) => updateConfig({ roundness: v })}
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>Cuadrado</span>
+                <span>Redondeado</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Offset ────────────────────────────────────────────── */}
+        <Card className="shadow-sm bg-white dark:bg-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Desplazamiento</CardTitle>
+            <CardDescription>Distancia en pixeles desde cada borde de la pantalla.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {(
+                [
+                  { key: 'offsetTop',    label: 'Arriba' },
+                  { key: 'offsetRight',  label: 'Derecha' },
+                  { key: 'offsetBottom', label: 'Abajo' },
+                  { key: 'offsetLeft',   label: 'Izquierda' },
+                ] as const
+              ).map(({ key, label }) => (
+                <div key={key} className="space-y-2">
+                  <Label htmlFor={key} className="text-xs text-muted-foreground">{label}</Label>
+                  <div className="relative">
+                    <Input
+                      id={key}
+                      type="number"
+                      min={0}
+                      max={200}
+                      value={config[key]}
+                      onChange={(e) =>
+                        updateConfig({ [key]: Math.max(0, Number(e.target.value)) })
+                      }
+                      className="pr-7 text-sm"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                      px
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Preview ───────────────────────────────────────────── */}
+        <div className="flex justify-end">
+          <Button variant="outline" onClick={firePreview} className="gap-2">
+            <Sparkles className="size-4" />
+            Probar notificacion
+          </Button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -652,6 +897,13 @@ export default function OrgNotificationsPage() {
             </CardContent>
           </Card>
         </div>
+
+        <Separator />
+
+        {/* ═══════════════════════════════════════════════════════════
+            ALERTAS VISUALES (SILEO)
+        ═══════════════════════════════════════════════════════════ */}
+        <SileoConfigSection />
 
       </div>
 
