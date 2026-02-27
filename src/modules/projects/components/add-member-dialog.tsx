@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useDeferredValue } from 'react';
+import { sileo } from 'sileo';
 import {
   Loader2,
   Search,
@@ -77,18 +78,44 @@ export function AddMemberDialog({
     if (!selectedUser || !selectedRoleId) return;
 
     try {
-      await addMember.mutateAsync({
-        projectId,
-        userId: selectedUser.id,
-        roleId: Number(selectedRoleId),
-      });
+      await sileo.promise(
+        addMember.mutateAsync({
+          projectId,
+          userId: selectedUser.id,
+          roleId: Number(selectedRoleId),
+        }),
+        {
+          loading: { title: 'Añadiendo miembro...' },
+          success: {
+            title: 'Miembro añadido',
+            description: (
+              <span className="text-xs!">
+                {selectedUser.firstName} {selectedUser.lastName} ha sido añadido al proyecto.
+              </span>
+            ),
+          },
+          error: (err) => ({
+            title:
+              (err as Error)?.message === 'Request failed with status code 409'
+                ? 'Usuario duplicado'
+                : 'Error al añadir miembro',
+            description: (
+              <span className="text-xs!">
+                {(err as Error)?.message === 'Request failed with status code 409'
+                  ? 'Este usuario ya es miembro del proyecto.'
+                  : 'No se pudo añadir el miembro.'}
+              </span>
+            ),
+          }),
+        },
+      );
       setSuccess(true);
       setTimeout(() => {
         handleReset();
         onOpenChange(false);
       }, 1500);
     } catch {
-      // Error handled by mutation
+      // Error shown by sileo.promise
     }
   };
 

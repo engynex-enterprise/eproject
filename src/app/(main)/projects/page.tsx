@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { sileo } from 'sileo';
-import { Plus, Star, Download } from 'lucide-react';
+import { Plus, Star, Download, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   useProjects,
@@ -112,14 +112,56 @@ export default function ProjectsPage() {
 
   const handleArchive = useCallback(
     (projectId: number) => {
-      updateProject.mutate({ projectId, data: { isArchived: true } });
+      sileo.promise(
+        updateProject.mutateAsync({ projectId, data: { isArchived: true } }),
+        {
+          loading: { title: 'Archivando proyecto...' },
+          success: {
+            title: 'Proyecto archivado',
+            description: (
+              <span className="text-xs!">
+                El proyecto ha sido archivado correctamente.
+              </span>
+            ),
+          },
+          error: {
+            title: 'Error al archivar',
+            description: (
+              <span className="text-xs!">
+                No se pudo archivar el proyecto.
+              </span>
+            ),
+          },
+        },
+      );
     },
     [updateProject],
   );
 
   const handleDelete = useCallback(
     (projectId: number) => {
-      deleteProject.mutate(projectId);
+      sileo.promise(
+        deleteProject.mutateAsync(projectId),
+        {
+          loading: { title: 'Eliminando proyecto...' },
+          success: {
+            title: 'Proyecto eliminado',
+            description: (
+              <span className="text-xs!">
+                El proyecto ha sido eliminado permanentemente.
+              </span>
+            ),
+          },
+          error: {
+            title: 'Error al eliminar',
+            description: (
+              <span className="text-xs!">
+                No se pudo eliminar el proyecto.
+              </span>
+            ),
+          },
+        },
+      );
     },
     [deleteProject],
   );
@@ -176,16 +218,63 @@ export default function ProjectsPage() {
   }, [selectedIds]);
 
   const handleBulkArchive = useCallback(() => {
-    for (const id of selectedIds) {
-      updateProject.mutate({ projectId: id, data: { isArchived: true } });
-    }
+    const count = selectedIds.size;
+    sileo.promise(
+      Promise.all(
+        [...selectedIds].map((id) =>
+          updateProject.mutateAsync({ projectId: id, data: { isArchived: true } }),
+        ),
+      ),
+      {
+        loading: { title: `Archivando ${count} proyecto(s)...` },
+        success: {
+          title: 'Proyectos archivados',
+          icon: <Archive className="size-4" />,
+          description: (
+            <span className="text-xs!">
+              {count} proyecto(s) han sido archivados.
+            </span>
+          ),
+        },
+        error: {
+          title: 'Error al archivar',
+          description: (
+            <span className="text-xs!">
+              No se pudieron archivar algunos proyectos.
+            </span>
+          ),
+        },
+      },
+    );
     setSelectedIds(new Set());
   }, [selectedIds, updateProject]);
 
   const handleBulkDelete = useCallback(() => {
-    for (const id of selectedIds) {
-      deleteProject.mutate(id);
-    }
+    const count = selectedIds.size;
+    sileo.promise(
+      Promise.all(
+        [...selectedIds].map((id) => deleteProject.mutateAsync(id)),
+      ),
+      {
+        loading: { title: `Eliminando ${count} proyecto(s)...` },
+        success: {
+          title: 'Proyectos eliminados',
+          description: (
+            <span className="text-xs!">
+              {count} proyecto(s) han sido eliminados permanentemente.
+            </span>
+          ),
+        },
+        error: {
+          title: 'Error al eliminar',
+          description: (
+            <span className="text-xs!">
+              No se pudieron eliminar algunos proyectos.
+            </span>
+          ),
+        },
+      },
+    );
     setSelectedIds(new Set());
   }, [selectedIds, deleteProject]);
 

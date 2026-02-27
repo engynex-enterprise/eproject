@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useDeferredValue } from 'react';
+import { sileo } from 'sileo';
 import { Loader2, Search } from 'lucide-react';
 import { IconColorPicker, getProjectIcon } from './icon-color-picker';
 import { Button } from '@/components/ui/button';
@@ -112,19 +113,40 @@ export function CreateProjectDialog({
     if (!name.trim() || !key.trim() || keyError) return;
 
     try {
-      await createProject.mutateAsync({
-        name: name.trim(),
-        key,
-        description: description.trim() || undefined,
-        leadId: selectedLead?.id,
-        iconUrl: selectedIcon,
-        color: selectedColor,
-        category: category || undefined,
-      });
+      await sileo.promise(
+        createProject.mutateAsync({
+          name: name.trim(),
+          key,
+          description: description.trim() || undefined,
+          leadId: selectedLead?.id,
+          iconUrl: selectedIcon,
+          color: selectedColor,
+          category: category || undefined,
+        }),
+        {
+          loading: { title: 'Creando proyecto...' },
+          success: {
+            title: 'Proyecto creado',
+            description: (
+              <span className="text-xs!">
+                El proyecto se ha creado y esta listo para usar.
+              </span>
+            ),
+          },
+          error: {
+            title: 'Error al crear el proyecto',
+            description: (
+              <span className="text-xs!">
+                Intentalo de nuevo mas tarde.
+              </span>
+            ),
+          },
+        },
+      );
       onOpenChange(false);
       handleReset();
     } catch {
-      // Error handled by mutation
+      // Error shown by sileo.promise
     }
   };
 

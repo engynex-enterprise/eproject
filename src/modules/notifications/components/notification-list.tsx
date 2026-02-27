@@ -116,15 +116,6 @@ export function NotificationList() {
     mutationFn: markAllAsRead,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      sileo.info({
-        title: 'Notificaciones leidas',
-        icon: <CheckCheck className="size-4" />,
-        description: (
-          <span className="text-xs!">
-            Todas las notificaciones han sido marcadas como leidas.
-          </span>
-        ),
-      });
     },
   });
 
@@ -166,7 +157,27 @@ export function NotificationList() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => markAllAsReadMutation.mutate()}
+          onClick={() =>
+            sileo.promise(markAllAsReadMutation.mutateAsync(), {
+              loading: { title: 'Marcando como leidas...' },
+              success: {
+                title: 'Notificaciones leidas',
+                description: (
+                  <span className="text-xs!">
+                    Todas las notificaciones han sido marcadas como leidas.
+                  </span>
+                ),
+              },
+              error: {
+                title: 'Error',
+                description: (
+                  <span className="text-xs!">
+                    No se pudieron marcar las notificaciones.
+                  </span>
+                ),
+              },
+            })
+          }
           disabled={markAllAsReadMutation.isPending}
         >
           <CheckCheck className="size-4" />
