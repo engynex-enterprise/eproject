@@ -16,7 +16,7 @@ import {
   Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -85,8 +85,9 @@ export const sidebarNavGroups: NavGroup[] = [
   },
 ];
 
-// Keep for backwards compatibility
 export const sidebarNav = sidebarNavGroups.flatMap((g) => g.items);
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function OrganizationGeneralPage() {
   const { currentOrgId } = useAuthStore();
@@ -109,137 +110,152 @@ export default function OrganizationGeneralPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateOrg.mutate({
-      name,
-      description: description || null,
-      website: website || null,
-    });
+    updateOrg.mutate({ name, description: description || null, website: website || null });
   };
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-2xl space-y-6 pb-24">
-        <div className="space-y-2">
-          <Skeleton className="h-7 w-48" />
-          <Skeleton className="h-4 w-72" />
+      <div className="space-y-8 pb-24">
+        <div className="border-b pb-6 space-y-2">
+          <Skeleton className="h-7 w-52" />
+          <Skeleton className="h-4 w-80" />
         </div>
-        <Skeleton className="h-56 w-full rounded-xl" />
+        <div className="grid gap-x-10 gap-y-6 md:grid-cols-[220px_1fr]">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-36" />
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-4 w-40" />
+          </div>
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="mx-auto max-w-2xl">
-        <Card className="border-destructive">
-          <CardContent className="pt-6">
-            <p className="text-destructive text-sm">
-              Error al cargar la configuracion de la organizacion. Intenta de nuevo mas tarde.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+        Error al cargar la configuracion de la organizacion. Intenta de nuevo mas tarde.
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 pb-24">
-      {/* Page header */}
-      <div className="space-y-1">
+    <div className="space-y-0 pb-24">
+      {/* ── Page header ─────────────────────────────────────────────────── */}
+      <div className="border-b pb-6 mb-8">
         <h2 className="text-xl font-semibold tracking-tight">Configuracion general</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground mt-1">
           Administra la informacion basica de tu organizacion.
         </p>
       </div>
 
-      <form id="org-general-form" onSubmit={handleSubmit} className="space-y-6">
-        {/* Información básica */}
-        <Card className="bg-white shadow-sm dark:bg-card">
-          <CardHeader>
-            <CardTitle className="text-sm">Informacion de la organizacion</CardTitle>
-            <CardDescription>
-              Los datos basicos que identifican tu organizacion en la plataforma.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {/* Name */}
-            <div className="grid gap-2 sm:grid-cols-[160px_1fr] sm:items-center">
-              <Label htmlFor="org-name" className="text-sm text-muted-foreground">
-                Nombre <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="org-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Mi organizacion"
-                required
-              />
-            </div>
+      <form id="org-general-form" onSubmit={handleSubmit} className="space-y-10">
+        {/* ── Sección: Identidad ───────────────────────────────────────── */}
+        <div className="grid gap-x-10 gap-y-6 md:grid-cols-[220px_1fr]">
+          {/* Left: section description */}
+          <div className="space-y-1.5">
+            <h3 className="text-sm font-semibold">Identidad</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              El nombre y descripcion que representan tu organizacion en toda la plataforma.
+            </p>
+          </div>
 
-            <Separator />
-
-            {/* Slug (read-only) */}
-            <div className="grid gap-2 sm:grid-cols-[160px_1fr] sm:items-start">
-              <Label className="text-sm text-muted-foreground pt-2.5">Slug</Label>
+          {/* Right: form card */}
+          <Card className="shadow-sm bg-white dark:bg-card">
+            <CardContent className="pt-6 space-y-5">
+              {/* Name */}
               <div className="space-y-1.5">
+                <Label htmlFor="org-name" className="text-sm font-medium">
+                  Nombre <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="org-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Mi organizacion"
+                  required
+                />
+              </div>
+
+              <Separator />
+
+              {/* Slug */}
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Slug</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     value={org?.slug ?? ''}
                     disabled
                     className="font-mono bg-muted max-w-xs"
                   />
-                  <Badge variant="secondary" className="shrink-0">
-                    Solo lectura
-                  </Badge>
+                  <Badge variant="secondary" className="shrink-0">Solo lectura</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Identificador unico generado automaticamente. No se puede modificar.
                 </p>
               </div>
-            </div>
 
-            <Separator />
+              <Separator />
 
-            {/* Description */}
-            <div className="grid gap-2 sm:grid-cols-[160px_1fr] sm:items-start">
-              <Label htmlFor="org-description" className="text-sm text-muted-foreground pt-2.5">
-                Descripcion
-              </Label>
-              <Textarea
-                id="org-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe brevemente tu organizacion..."
-                rows={3}
-                className="resize-none"
-              />
-            </div>
+              {/* Description */}
+              <div className="space-y-1.5">
+                <Label htmlFor="org-description" className="text-sm font-medium">
+                  Descripcion
+                </Label>
+                <Textarea
+                  id="org-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe brevemente tu organizacion..."
+                  rows={3}
+                  className="resize-none"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-            <Separator />
+        <Separator />
 
-            {/* Website */}
-            <div className="grid gap-2 sm:grid-cols-[160px_1fr] sm:items-center">
-              <Label htmlFor="org-website" className="text-sm text-muted-foreground">
-                Sitio web
-              </Label>
-              <Input
-                id="org-website"
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-                placeholder="https://ejemplo.com"
-                type="url"
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {/* ── Sección: Contacto ────────────────────────────────────────── */}
+        <div className="grid gap-x-10 gap-y-6 md:grid-cols-[220px_1fr]">
+          <div className="space-y-1.5">
+            <h3 className="text-sm font-semibold">Contacto</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Informacion de contacto publica de la organizacion.
+            </p>
+          </div>
+
+          <Card className="shadow-sm bg-white dark:bg-card">
+            <CardContent className="pt-6 space-y-5">
+              {/* Website */}
+              <div className="space-y-1.5">
+                <Label htmlFor="org-website" className="text-sm font-medium">
+                  Sitio web
+                </Label>
+                <Input
+                  id="org-website"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  placeholder="https://ejemplo.com"
+                  type="url"
+                />
+                <p className="text-xs text-muted-foreground">
+                  URL publica de tu organizacion. Se mostrara en el perfil.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </form>
 
-      {/* ── Fixed save bar ──────────────────────────────────────── */}
+      {/* ── Fixed save bar ──────────────────────────────────────────────── */}
       <div
-        className="fixed bottom-0 right-0 z-20 border-t bg-white/80 backdrop-blur-sm dark:bg-card/80"
+        className="fixed bottom-0 right-0 z-20 border-t bg-background/80 backdrop-blur-sm"
         style={{ left: 'var(--sidebar-width)' }}
       >
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-6 py-3">
+        <div className="flex items-center justify-between px-6 py-3">
           <p className="text-xs text-muted-foreground">
             Los cambios no se guardan automaticamente.
           </p>
