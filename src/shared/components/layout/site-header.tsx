@@ -123,18 +123,18 @@ export function SiteHeader() {
   return (
     <>
       <header className="sticky top-0 z-50 flex w-full items-center border-b bg-white dark:bg-background">
-        <div className="flex h-(--header-height) w-full items-center gap-3 px-4 lg:px-6">
+        <div className="flex h-14 w-full items-center gap-4 px-4 lg:px-6">
           {/* Left: sidebar toggle + breadcrumbs */}
           <div className="flex items-center gap-3">
             <Button
-              className="size-8"
+              className="size-9"
               variant="ghost"
               size="icon"
               onClick={toggleSidebar}
             >
               <SidebarIcon className="size-4" />
             </Button>
-            <Separator orientation="vertical" className="h-5" />
+            <Separator orientation="vertical" className="h-6" />
             <Breadcrumb className="hidden sm:block">
               <BreadcrumbList>
                 {breadcrumbs.map((crumb, index) => (
@@ -156,16 +156,16 @@ export function SiteHeader() {
           </div>
 
           {/* Right: search + notifications */}
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-2">
             {/* Desktop search button with shortcut */}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCommandOpen(true)}
-              className="hidden h-8 gap-2 text-muted-foreground sm:flex"
+              className="hidden h-9 gap-2 px-3 text-muted-foreground sm:flex"
             >
               <Search className="size-3.5" />
-              <span className="text-xs">Buscar...</span>
+              <span className="text-sm">Buscar...</span>
               <kbd className="pointer-events-none ml-2 inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
                 <span className="text-xs">&#8984;</span>K
               </kbd>
@@ -174,7 +174,7 @@ export function SiteHeader() {
             <Button
               variant="ghost"
               size="icon"
-              className="size-8 sm:hidden"
+              className="size-9 sm:hidden"
               onClick={() => setCommandOpen(true)}
             >
               <Search className="size-4" />

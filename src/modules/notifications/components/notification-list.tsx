@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { sileo } from 'sileo';
 import {
   Bell,
   Check,
@@ -115,6 +116,7 @@ export function NotificationList() {
     mutationFn: markAllAsRead,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      sileo.info({ title: 'Notificaciones marcadas como leídas' });
     },
   });
 

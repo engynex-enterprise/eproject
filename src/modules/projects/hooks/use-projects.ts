@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { sileo } from 'sileo';
 import {
   projectsService,
   type CreateProjectData,
@@ -37,6 +38,10 @@ export function useCreateProject(orgId: number) {
       projectsService.createProject(orgId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.list(orgId) });
+      sileo.success({ title: 'Proyecto creado correctamente' });
+    },
+    onError: () => {
+      sileo.error({ title: 'Error al crear el proyecto', description: 'Inténtalo de nuevo.' });
     },
   });
 }
@@ -54,6 +59,10 @@ export function useUpdateProject() {
     }) => projectsService.updateProject(projectId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.all });
+      sileo.success({ title: 'Proyecto actualizado' });
+    },
+    onError: () => {
+      sileo.error({ title: 'Error al actualizar el proyecto' });
     },
   });
 }
@@ -66,6 +75,10 @@ export function useDeleteProject(orgId: number) {
       projectsService.deleteProject(projectId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.list(orgId) });
+      sileo.success({ title: 'Proyecto eliminado' });
+    },
+    onError: () => {
+      sileo.error({ title: 'Error al eliminar el proyecto' });
     },
   });
 }
@@ -86,6 +99,13 @@ export function useAddProjectMember(orgId: number) {
       projectsService.addProjectMember(projectId, { userId, roleId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.all });
+      sileo.success({ title: 'Miembro añadido al proyecto' });
+    },
+    onError: (error: Error) => {
+      const msg = error?.message === 'Request failed with status code 409'
+        ? 'Este usuario ya es miembro del proyecto.'
+        : 'Error al añadir el miembro.';
+      sileo.error({ title: msg });
     },
   });
 }

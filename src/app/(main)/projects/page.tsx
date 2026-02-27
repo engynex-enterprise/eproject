@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { sileo } from 'sileo';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -152,6 +153,7 @@ export default function ProjectsPage() {
 
   // Bulk actions
   const handleBulkFavorite = useCallback(() => {
+    const count = selectedIds.size;
     setFavorites((prev) => {
       const next = new Set(prev);
       for (const id of selectedIds) {
@@ -162,6 +164,7 @@ export default function ProjectsPage() {
       return next;
     });
     setSelectedIds(new Set());
+    sileo.success({ title: `${count} proyecto(s) actualizados` });
   }, [selectedIds]);
 
   const handleBulkArchive = useCallback(() => {
@@ -205,6 +208,7 @@ export default function ProjectsPage() {
     link.download = `proyectos-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+    sileo.success({ title: 'Proyectos exportados', description: 'Archivo CSV descargado.' });
   }, [projects]);
 
   // Preview
