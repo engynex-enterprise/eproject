@@ -15,12 +15,14 @@ import {
   Trash2,
   ChevronRight,
   IterationCcw,
+  CircleDot,
+  Hash,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Circle,
 } from 'lucide-react';
 import type { ProjectListItem } from '../services/projects.service';
-import {
-  Card,
-  CardContent,
-} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -62,6 +64,19 @@ interface ProjectCardProps {
   onDelete?: (projectId: number) => void;
 }
 
+function formatRelativeDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Hoy';
+  if (diffDays === 1) return 'Ayer';
+  if (diffDays < 7) return `Hace ${diffDays} días`;
+  if (diffDays < 30) return `Hace ${Math.floor(diffDays / 7)} sem`;
+  return `Hace ${Math.floor(diffDays / 30)}m`;
+}
+
 export function ProjectCard({
   project,
   isFavorite = false,
@@ -84,200 +99,203 @@ export function ProjectCard({
 
   return (
     <>
-      <Card
-        className="group relative cursor-pointer overflow-hidden transition-all hover:shadow-md"
+      <div
+        className="group relative cursor-pointer overflow-hidden rounded-lg border bg-card transition-all hover:shadow-md"
         onClick={handleClick}
-        style={{
-          borderLeft: `4px solid ${project.healthColor}`,
-        }}
+        style={{ borderLeft: `4px solid ${project.healthColor}` }}
       >
-        {/* Subtle accent blob */}
-        <div
-          className="pointer-events-none absolute -right-8 -top-8 size-28 rounded-full opacity-20 blur-3xl"
-          style={{ backgroundColor: colors.base }}
-        />
-
-        <CardContent className="relative space-y-2.5 p-3">
-          {/* Row 1: Icon + Name + Key + Sprint + Favorite + Menu */}
-          <div className="flex items-center gap-2">
-            <div
-              className="flex size-7 shrink-0 items-center justify-center rounded-md text-white"
-              style={{ backgroundColor: colors.base }}
-            >
-              {project.avatarUrl ? (
-                <img
-                  src={project.avatarUrl}
-                  alt={project.name}
-                  className="size-4 rounded-sm"
-                />
-              ) : (
-                <FolderKanban className="size-3.5" />
-              )}
-            </div>
-            <h3 className="min-w-0 flex-1 truncate text-sm font-semibold leading-none">
+        <div className="space-y-3 p-4">
+          {/* Row 1: Name (bold) + Badges + Actions */}
+          <div className="flex items-start gap-2">
+            <h3 className="min-w-0 flex-1 text-base font-bold leading-tight">
               {project.name}
             </h3>
-            <Badge variant="secondary" className="shrink-0 text-[10px] font-medium">
-              {project.key}
-            </Badge>
-            {project.activeSprint && (
-              <Badge variant="outline" className="hidden gap-1 text-[10px] font-normal sm:flex">
-                <IterationCcw className="size-2.5" />
-                {project.activeSprint.name}
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Badge
+                className="text-[10px] font-semibold text-white"
+                style={{ backgroundColor: colors.base }}
+              >
+                {project.key}
               </Badge>
-            )}
-            {isFavorite && (
-              <Star className="size-3.5 shrink-0 fill-yellow-400 text-yellow-400" />
-            )}
+              {project.activeSprint && (
+                <Badge variant="outline" className="gap-1 text-[10px] font-normal">
+                  <IterationCcw className="size-2.5" />
+                  {project.activeSprint.name}
+                </Badge>
+              )}
+              {isFavorite && (
+                <Star className="size-3.5 fill-yellow-400 text-yellow-400" />
+              )}
 
-            {/* Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  className="size-6 shrink-0 opacity-0 group-hover:opacity-100"
-                >
-                  <MoreHorizontal className="size-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
-                <DropdownMenuItem
-                  onClick={() => onToggleFavorite?.(project.id)}
-                  className="gap-2"
-                >
-                  <Star
-                    className={cn(
-                      'size-4',
-                      isFavorite && 'fill-yellow-400 text-yellow-400',
-                    )}
-                  />
-                  {isFavorite ? 'Quitar de marcados' : 'Añadir a marcados'}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => router.push(`/projects/${project.key}/settings/members`)}
-                  className="gap-2"
-                >
-                  <UserPlus className="size-4" />
-                  Añadir personas
-                </DropdownMenuItem>
-                <DropdownMenuItem className="gap-2" disabled>
-                  <FileText className="size-4" />
-                  <span className="flex-1">Guardar como plantilla</span>
-                  <Badge variant="outline" className="ml-auto h-5 px-1.5 text-[9px] font-semibold uppercase tracking-wider">
-                    Pronto
-                  </Badge>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => router.push(`/projects/${project.key}/settings`)}
-                  className="gap-2"
-                >
-                  <Image className="size-4" />
-                  <span className="flex-1">Establecer fondo del proyecto</span>
-                  <ChevronRight className="size-3.5 text-muted-foreground" />
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => router.push(`/projects/${project.key}/settings`)}
-                  className="gap-2"
-                >
-                  <Settings className="size-4" />
-                  Configuración del proyecto
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => onArchive?.(project.id)}
-                  className="gap-2"
-                >
-                  <Archive className="size-4" />
-                  Archivar proyecto
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => setDeleteOpen(true)}
-                  className="gap-2"
-                >
-                  <Trash2 className="size-4" />
-                  Borrar proyecto
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              {/* Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="size-6 opacity-0 group-hover:opacity-100"
+                  >
+                    <MoreHorizontal className="size-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuItem
+                    onClick={() => onToggleFavorite?.(project.id)}
+                    className="gap-2"
+                  >
+                    <Star
+                      className={cn(
+                        'size-4',
+                        isFavorite && 'fill-yellow-400 text-yellow-400',
+                      )}
+                    />
+                    {isFavorite ? 'Quitar de marcados' : 'Añadir a marcados'}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => router.push(`/projects/${project.key}/settings/members`)}
+                    className="gap-2"
+                  >
+                    <UserPlus className="size-4" />
+                    Añadir personas
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="gap-2" disabled>
+                    <FileText className="size-4" />
+                    <span className="flex-1">Guardar como plantilla</span>
+                    <Badge variant="outline" className="ml-auto h-5 px-1.5 text-[9px] font-semibold uppercase tracking-wider">
+                      Pronto
+                    </Badge>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => router.push(`/projects/${project.key}/settings`)}
+                    className="gap-2"
+                  >
+                    <Image className="size-4" />
+                    <span className="flex-1">Establecer fondo del proyecto</span>
+                    <ChevronRight className="size-3.5 text-muted-foreground" />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => router.push(`/projects/${project.key}/settings`)}
+                    className="gap-2"
+                  >
+                    <Settings className="size-4" />
+                    Configuración del proyecto
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => onArchive?.(project.id)}
+                    className="gap-2"
+                  >
+                    <Archive className="size-4" />
+                    Archivar proyecto
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => setDeleteOpen(true)}
+                    className="gap-2"
+                  >
+                    <Trash2 className="size-4" />
+                    Borrar proyecto
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
-          {/* Row 2: Progress bar + Stats + Members + Counts */}
-          <div className="flex items-center gap-3">
-            {/* Mini progress bar */}
-            <div className="flex items-center gap-1.5">
-              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${progressPercent}%`,
-                    backgroundColor: project.healthColor,
-                  }}
-                />
-              </div>
-              <span className="text-[10px] font-medium text-muted-foreground">
-                {progressPercent}%
-              </span>
-            </div>
-
-            {/* Issue stats compact */}
-            <span className="text-[10px] text-muted-foreground">
-              {project.issueStats.done}/{project.issueStats.total}
+          {/* Row 2: Metadata - ID | Issues | Sprints | Updated */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Hash className="size-3" />
+              {project.id}
             </span>
+            <span className="text-muted-foreground/30">|</span>
+            <span className="flex items-center gap-1">
+              <FolderKanban className="size-3" />
+              {project.issueCount} incidencias
+            </span>
+            {project.sprintCount > 0 && (
+              <>
+                <span className="text-muted-foreground/30">|</span>
+                <span className="flex items-center gap-1">
+                  <IterationCcw className="size-3" />
+                  {project.sprintCount} sprints
+                </span>
+              </>
+            )}
+            <span className="text-muted-foreground/30">|</span>
+            <span className="flex items-center gap-1">
+              <Clock className="size-3" />
+              {formatRelativeDate(project.updatedAt)}
+            </span>
+          </div>
 
-            <div className="flex-1" />
+          {/* Row 3: Issue stats with mini icons */}
+          <div className="flex items-center gap-4 text-xs">
+            <span className="flex items-center gap-1 text-green-600">
+              <CheckCircle2 className="size-3" />
+              {project.issueStats.done} completadas
+            </span>
+            <span className="flex items-center gap-1 text-blue-500">
+              <CircleDot className="size-3" />
+              {project.issueStats.inProgress} en curso
+            </span>
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <Circle className="size-3" />
+              {project.issueStats.todo} pendientes
+            </span>
+          </div>
 
-            {/* Member avatars */}
+          {/* Row 4: Progress bar full width */}
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${progressPercent}%`,
+                  backgroundColor: project.healthColor,
+                }}
+              />
+            </div>
+            <span className="text-[11px] font-semibold text-muted-foreground">
+              {progressPercent}%
+            </span>
+          </div>
+
+          {/* Row 5: Members */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Users className="size-3.5" />
+            <span className="font-medium">Miembros:</span>
             {project.members.length > 0 ? (
               <TooltipProvider>
-                <div className="flex -space-x-1">
-                  {project.members.slice(0, 3).map((member) => (
-                    <Tooltip key={member.id}>
-                      <TooltipTrigger asChild>
-                        <Avatar className="size-5 border-2 border-background">
-                          <AvatarImage src={member.avatarUrl ?? undefined} />
-                          <AvatarFallback className="bg-primary/10 text-[7px] text-primary">
-                            {member.firstName?.[0]}
-                            {member.lastName?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{member.firstName} {member.lastName}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                  {project.memberCount > 3 && (
-                    <div className="flex size-5 items-center justify-center rounded-full border-2 border-background bg-muted text-[7px] font-medium">
-                      +{project.memberCount - 3}
-                    </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="flex -space-x-1.5">
+                    {project.members.slice(0, 4).map((member) => (
+                      <Tooltip key={member.id}>
+                        <TooltipTrigger asChild>
+                          <Avatar className="size-6 border-2 border-card">
+                            <AvatarImage src={member.avatarUrl ?? undefined} />
+                            <AvatarFallback className="bg-primary/10 text-[8px] text-primary">
+                              {member.firstName?.[0]}
+                              {member.lastName?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{member.firstName} {member.lastName}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </div>
+                  {project.memberCount > 4 && (
+                    <span className="text-[11px]">+{project.memberCount - 4} más</span>
                   )}
                 </div>
               </TooltipProvider>
             ) : (
-              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                <Users className="size-2.5" />
-                {project.memberCount}
-              </span>
+              <span>{project.memberCount} personas</span>
             )}
-
-            {/* Counts */}
-            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-              <span className="flex items-center gap-0.5">
-                <FolderKanban className="size-2.5" />
-                {project.issueCount}
-              </span>
-              {project.sprintCount > 0 && (
-                <span className="flex items-center gap-0.5">
-                  <IterationCcw className="size-2.5" />
-                  {project.sprintCount}
-                </span>
-              )}
-            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
