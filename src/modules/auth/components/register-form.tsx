@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,8 @@ export function RegisterForm({
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const registerMutation = useRegister();
 
@@ -157,17 +160,28 @@ export function RegisterForm({
 
         <Field data-invalid={!!errors.password || undefined}>
           <Label htmlFor="register-password">Contrasena</Label>
-          <Input
-            id="register-password"
-            type="password"
-            placeholder="Minimo 8 caracteres"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              clearFieldError("password");
-            }}
-            autoComplete="new-password"
-          />
+          <div className="relative">
+            <Input
+              id="register-password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Minimo 8 caracteres"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                clearFieldError("password");
+              }}
+              autoComplete="new-password"
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
           {errors.password && <FieldError>{errors.password}</FieldError>}
         </Field>
 
@@ -175,17 +189,28 @@ export function RegisterForm({
           <Label htmlFor="register-confirm-password">
             Confirmar contrasena
           </Label>
-          <Input
-            id="register-confirm-password"
-            type="password"
-            placeholder="Repite tu contrasena"
-            value={confirmPassword}
-            onChange={(e) => {
-              setConfirmPassword(e.target.value);
-              clearFieldError("confirmPassword");
-            }}
-            autoComplete="new-password"
-          />
+          <div className="relative">
+            <Input
+              id="register-confirm-password"
+              type={showConfirmPassword ? "text" : "password"}
+              placeholder="Repite tu contrasena"
+              value={confirmPassword}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                clearFieldError("confirmPassword");
+              }}
+              autoComplete="new-password"
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword((v) => !v)}
+              className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+              tabIndex={-1}
+            >
+              {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
           {errors.confirmPassword && (
             <FieldError>{errors.confirmPassword}</FieldError>
           )}
