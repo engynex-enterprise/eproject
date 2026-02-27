@@ -565,6 +565,7 @@ export default function OrgNotificationsPage() {
       // Sileo / UI alert config
       uiAlertProvider: sileoStore.alertProvider,
       sileoConfig: {
+        // Shared
         position:     sileoStore.position,
         theme:        sileoStore.theme,
         duration:     sileoStore.duration,
@@ -573,6 +574,13 @@ export default function OrgNotificationsPage() {
         offsetRight:  sileoStore.offsetRight,
         offsetBottom: sileoStore.offsetBottom,
         offsetLeft:   sileoStore.offsetLeft,
+        // Sonner-specific
+        sonnerRichColors:    sileoStore.sonnerRichColors,
+        sonnerExpand:        sileoStore.sonnerExpand,
+        sonnerVisibleToasts: sileoStore.sonnerVisibleToasts,
+        sonnerCloseButton:   sileoStore.sonnerCloseButton,
+        sonnerGap:           sileoStore.sonnerGap,
+        sonnerInvert:        sileoStore.sonnerInvert,
       },
     });
   };
