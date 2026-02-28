@@ -231,7 +231,7 @@ export function useUpdateRole(orgId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ roleId, data }: { roleId: number; data: UpdateRoleData }) =>
-      updateRole(roleId, data),
+      updateRole(orgId, roleId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.roles(orgId) });
       toast.success({ title: 'Rol actualizado' });
@@ -245,7 +245,7 @@ export function useUpdateRole(orgId: number) {
 export function useDeleteRole(orgId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (roleId: number) => deleteRole(roleId),
+    mutationFn: (roleId: number) => deleteRole(orgId, roleId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orgKeys.roles(orgId) });
       toast.success({ title: 'Rol eliminado' });

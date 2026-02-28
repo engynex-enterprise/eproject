@@ -243,18 +243,19 @@ export async function createRole(
 }
 
 export async function updateRole(
+  orgId: number,
   roleId: number,
   data: UpdateRoleData,
 ): Promise<Role> {
   const res = await apiClient.patch<ApiResponse<Role>>(
-    `/roles/${roleId}`,
+    `/organizations/${orgId}/roles/${roleId}`,
     data,
   );
   return res.data;
 }
 
-export async function deleteRole(roleId: number): Promise<void> {
-  await apiClient.delete(`/roles/${roleId}`);
+export async function deleteRole(orgId: number, roleId: number): Promise<void> {
+  await apiClient.delete(`/organizations/${orgId}/roles/${roleId}`);
 }
 
 export async function getPermissions(): Promise<Permission[]> {
