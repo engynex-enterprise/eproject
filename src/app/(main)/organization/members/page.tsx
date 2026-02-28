@@ -28,6 +28,10 @@ import {
   TrendingUp,
   AlertTriangle,
   Settings,
+  Activity,
+  Key,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -109,8 +113,9 @@ import {
   usePendingInvitations,
   useCancelInvitation,
   useNotificationConfig,
+  useAuditLog,
 } from '@/modules/organization/hooks/use-organization';
-import type { OrganizationMember } from '@/shared/types';
+import type { OrganizationMember, Role } from '@/shared/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -124,6 +129,18 @@ function formatDate(dateStr: string): string {
     month: 'short',
     year: 'numeric',
   });
+}
+
+function formatRelative(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'ahora';
+  if (mins < 60) return `hace ${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `hace ${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `hace ${days}d`;
+  return formatDate(dateStr);
 }
 
 const AVATAR_COLORS = [
@@ -164,6 +181,266 @@ function exportToCsv(members: OrganizationMember[]) {
 type SortKey = 'name' | 'role' | 'joined';
 type SortDir = 'asc' | 'desc';
 type ViewMode = 'table' | 'card';
+type DetailTab = 'profile' | 'permissions' | 'activity';
+
+// ─── Member detail panel ──────────────────────────────────────────────────────
+
+function MemberDetailPanel({
+  member,
+  roles,
+  orgId,
+  updateRole,
+  onDelete,
+}: {
+  member: OrganizationMember;
+  roles: Role[] | undefined;
+  orgId: number;
+  updateRole: { mutate: (args: { memberId: number; roleId: number }) => void };
+  onDelete: (member: OrganizationMember) => void;
+}) {
+  const [activeTab, setActiveTab] = useState<DetailTab>('profile');
+  const fullName = `${member.user.firstName} ${member.user.lastName}`;
+  const colorClass = getAvatarColor(fullName);
+
+  const permissionsByResource = useMemo(() => {
+    const groups: Record<string, string[]> = {};
+    for (const perm of member.role.permissions ?? []) {
+      if (!groups[perm.resource]) groups[perm.resource] = [];
+      groups[perm.resource].push(perm.action);
+    }
+    return groups;
+  }, [member.role.permissions]);
+
+  const { data: auditData, isLoading: auditLoading } = useAuditLog(orgId, {
+    userId: member.userId,
+    limit: 50,
+  });
+  const activityEntries = auditData?.entries ?? [];
+
+  const tabs: { key: DetailTab; label: string }[] = [
+    { key: 'profile', label: 'Perfil' },
+    { key: 'permissions', label: 'Permisos' },
+    { key: 'activity', label: 'Actividad' },
+  ];
+
+  return (
+    <>
+      {/* Header */}
+      <div className="border-b px-6 py-5">
+        <div className="flex items-start gap-4">
+          <Avatar className="size-12 shrink-0">
+            <AvatarImage src={member.user.avatarUrl ?? undefined} />
+            <AvatarFallback className={`text-sm text-white font-medium ${colorClass}`}>
+              {getInitials(member.user.firstName, member.user.lastName)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-base truncate">{fullName}</h3>
+            <p className="text-sm text-muted-foreground truncate">{member.user.email}</p>
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              <Badge variant="secondary" className="text-xs">{member.role.name}</Badge>
+              {member.user.isEmailVerified ? (
+                <span className="flex items-center gap-1 text-xs text-emerald-600">
+                  <CheckCircle2 className="size-3" />
+                  Verificado
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-xs text-amber-600">
+                  <XCircle className="size-3" />
+                  Sin verificar
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tab bar */}
+      <div className="border-b px-6">
+        <div className="flex">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`relative px-1 py-3 text-sm font-medium mr-5 transition-colors ${
+                activeTab === tab.key
+                  ? 'text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+
+        {/* ── Perfil tab ─────────────────────────────────────────────── */}
+        {activeTab === 'profile' && (
+          <div className="px-6 py-5 space-y-6">
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Informacion
+              </h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Correo</span>
+                  <span className="font-medium truncate max-w-[58%] text-right">{member.user.email}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Se unio</span>
+                  <span className="font-medium">{formatDate(member.joinedAt)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Estado</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="size-1.5 rounded-full bg-emerald-500 block" />
+                    <span className="font-medium">Activo</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Proveedor</span>
+                  <Badge variant="outline" className="text-xs capitalize">{member.user.provider}</Badge>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Rol y acceso
+              </h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Rol actual</span>
+                  <Select
+                    value={String(member.role.id)}
+                    onValueChange={(val) =>
+                      updateRole.mutate({ memberId: member.id, roleId: Number(val) })
+                    }
+                  >
+                    <SelectTrigger className="h-7 text-xs w-36 bg-transparent">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles?.map((role) => (
+                        <SelectItem key={role.id} value={String(role.id)}>
+                          {role.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Permisos</span>
+                  <span className="font-medium">
+                    {(member.role.permissions ?? []).length} en{' '}
+                    {Object.keys(permissionsByResource).length} recursos
+                  </span>
+                </div>
+                {member.role.isSystem && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/50 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
+                    Este es un rol del sistema y no puede modificarse.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="w-full gap-2"
+                onClick={() => onDelete(member)}
+              >
+                <Trash2 className="size-4" />
+                Eliminar miembro
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Permisos tab ───────────────────────────────────────────── */}
+        {activeTab === 'permissions' && (
+          <div className="px-6 py-5 space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Permisos otorgados por el rol{' '}
+              <strong className="text-foreground">{member.role.name}</strong>.
+            </p>
+            {Object.entries(permissionsByResource).length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-12">
+                <Key className="size-8 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">Sin permisos asignados</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(permissionsByResource).map(([resource, actions]) => (
+                  <div key={resource} className="rounded-lg border p-3 space-y-2">
+                    <p className="text-xs font-semibold capitalize text-foreground">{resource}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {actions.map((action) => (
+                        <Badge key={action} variant="secondary" className="text-[10px] font-mono">
+                          {action}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Actividad tab ──────────────────────────────────────────── */}
+        {activeTab === 'activity' && (
+          <div className="px-6 py-5 space-y-4">
+            {auditLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 rounded-lg" />
+                ))}
+              </div>
+            ) : activityEntries.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-12">
+                <Activity className="size-8 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">Sin actividad registrada</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {activityEntries.map((entry) => (
+                  <div key={entry.id} className="rounded-lg border p-3 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge variant="secondary" className="text-[10px] font-mono">
+                        {entry.action}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        {formatRelative(entry.timestamp)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {entry.resource}
+                      {entry.resourceId ? ` #${entry.resourceId}` : ''}
+                    </p>
+                    {entry.ipAddress && (
+                      <p className="text-[10px] text-muted-foreground font-mono">
+                        {entry.ipAddress}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -206,6 +483,9 @@ export default function MembersPage() {
 
   // ── Multi-select ────────────────────────────────────────────────────────────
   const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  // ── Member detail panel ──────────────────────────────────────────────────────
+  const [selectedMember, setSelectedMember] = useState<OrganizationMember | null>(null);
 
   // ── Delete confirmation ──────────────────────────────────────────────────────
   const [memberToDelete, setMemberToDelete] = useState<{
@@ -342,8 +622,15 @@ export default function MembersPage() {
       onSuccess: () => {
         setMemberToDelete(null);
         setDeleteConfirmInput('');
+        if (selectedMember?.id === memberToDelete.id) setSelectedMember(null);
       },
     });
+  };
+
+  // ── Open delete from detail panel ───────────────────────────────────────────
+  const handleDeleteFromPanel = (member: OrganizationMember) => {
+    const fullName = `${member.user.firstName} ${member.user.lastName}`;
+    setMemberToDelete({ id: member.id, email: member.user.email, name: fullName });
   };
 
   // ── Bulk delete ────────────────────────────────────────────────────────────────
@@ -369,16 +656,20 @@ export default function MembersPage() {
   // ── Loading ────────────────────────────────────────────────────────────────────
   if (membersLoading) {
     return (
-      <div className="space-y-8 pb-24">
+      <div className="flex flex-1 flex-col gap-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-xl" />
+          ))}
         </div>
-        <div className="border-b pb-6 space-y-2">
+        <div className="space-y-2">
           <Skeleton className="h-7 w-32" />
           <Skeleton className="h-4 w-72" />
         </div>
         <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-xl" />
+          ))}
         </div>
       </div>
     );
@@ -398,10 +689,10 @@ export default function MembersPage() {
 
   return (
     <TooltipProvider>
-      <div className="space-y-0 pb-24">
+      <div className="flex flex-1 flex-col gap-6">
 
         {/* ── Metrics ─────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {stats.map((s) => (
             <Card key={s.label} className="shadow-sm bg-white dark:bg-card">
               <CardContent className="pt-5 pb-4">
@@ -420,9 +711,9 @@ export default function MembersPage() {
         </div>
 
         {/* ── Page header ─────────────────────────────────────────────────── */}
-        <div className="border-b pb-6 mb-6 flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-4 border-b pb-4">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">Personas</h2>
+            <h1 className="text-2xl font-bold tracking-tight">Personas</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Gestiona los miembros de tu organizacion y sus roles.
             </p>
@@ -456,7 +747,7 @@ export default function MembersPage() {
         </div>
 
         {/* ── Toolbar ─────────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-48 max-w-sm">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -466,7 +757,10 @@ export default function MembersPage() {
               className="pl-9"
             />
             {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
                 <X className="size-3.5" />
               </button>
             )}
@@ -511,7 +805,13 @@ export default function MembersPage() {
           <div className="ml-auto flex items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" className="size-9" onClick={() => exportToCsv(filteredMembers)} disabled={filteredMembers.length === 0}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9"
+                  onClick={() => exportToCsv(filteredMembers)}
+                  disabled={filteredMembers.length === 0}
+                >
                   <Download className="size-4" />
                 </Button>
               </TooltipTrigger>
@@ -520,7 +820,10 @@ export default function MembersPage() {
             <div className="flex items-center rounded-md border bg-muted/40 p-0.5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button onClick={() => setViewMode('table')} className={`flex size-7 items-center justify-center rounded transition-colors ${viewMode === 'table' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                  <button
+                    onClick={() => setViewMode('table')}
+                    className={`flex size-7 items-center justify-center rounded transition-colors ${viewMode === 'table' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
                     <LayoutList className="size-3.5" />
                   </button>
                 </TooltipTrigger>
@@ -528,7 +831,10 @@ export default function MembersPage() {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button onClick={() => setViewMode('card')} className={`flex size-7 items-center justify-center rounded transition-colors ${viewMode === 'card' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                  <button
+                    onClick={() => setViewMode('card')}
+                    className={`flex size-7 items-center justify-center rounded transition-colors ${viewMode === 'card' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
                     <LayoutGrid className="size-3.5" />
                   </button>
                 </TooltipTrigger>
@@ -540,7 +846,7 @@ export default function MembersPage() {
 
         {/* ── Bulk action bar ──────────────────────────────────────────────── */}
         {someSelected && (
-          <div className="flex items-center gap-3 rounded-lg border bg-muted/60 px-4 py-2.5 mb-4 text-sm">
+          <div className="flex items-center gap-3 rounded-lg border bg-muted/60 px-4 py-2.5 text-sm">
             <span className="font-medium text-muted-foreground">
               {selected.size} seleccionado{selected.size !== 1 ? 's' : ''}
             </span>
@@ -579,119 +885,162 @@ export default function MembersPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4 px-0 pb-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10 pl-6">
-                      <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Seleccionar todos" />
-                    </TableHead>
-                    <TableHead>
-                      <button className="flex items-center text-xs font-medium hover:text-foreground" onClick={() => handleSort('name')}>
-                        Miembro <SortIcon col="name" />
-                      </button>
-                    </TableHead>
-                    <TableHead className="w-44">
-                      <button className="flex items-center text-xs font-medium hover:text-foreground" onClick={() => handleSort('role')}>
-                        Rol <SortIcon col="role" />
-                      </button>
-                    </TableHead>
-                    <TableHead className="w-28">Estado</TableHead>
-                    <TableHead className="w-36">
-                      <button className="flex items-center text-xs font-medium hover:text-foreground" onClick={() => handleSort('joined')}>
-                        Se unio <SortIcon col="joined" />
-                      </button>
-                    </TableHead>
-                    <TableHead className="w-10 pr-6" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredMembers.map((member) => {
-                    const fullName  = `${member.user.firstName} ${member.user.lastName}`;
-                    const colorClass = getAvatarColor(fullName);
-                    const isChecked  = selected.has(member.id);
-                    return (
-                      <TableRow key={member.id} data-state={isChecked ? 'selected' : undefined} className={isChecked ? 'bg-muted/40' : undefined}>
-                        <TableCell className="pl-6">
-                          <Checkbox checked={isChecked} onCheckedChange={() => toggleOne(member.id)} aria-label={`Seleccionar ${fullName}`} />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="size-8 shrink-0">
-                              <AvatarImage src={member.user.avatarUrl ?? undefined} />
-                              <AvatarFallback className={`text-xs text-white ${colorClass}`}>
-                                {getInitials(member.user.firstName, member.user.lastName)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0">
-                              <div className="font-medium text-sm leading-none truncate">{fullName}</div>
-                              <div className="text-xs text-muted-foreground mt-0.5 truncate">{member.user.email}</div>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10 pl-6">
+                        <Checkbox
+                          checked={allSelected}
+                          onCheckedChange={toggleAll}
+                          aria-label="Seleccionar todos"
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          className="flex items-center text-xs font-medium hover:text-foreground"
+                          onClick={() => handleSort('name')}
+                        >
+                          Miembro <SortIcon col="name" />
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-44">
+                        <button
+                          className="flex items-center text-xs font-medium hover:text-foreground"
+                          onClick={() => handleSort('role')}
+                        >
+                          Rol <SortIcon col="role" />
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-28">Estado</TableHead>
+                      <TableHead className="w-36">
+                        <button
+                          className="flex items-center text-xs font-medium hover:text-foreground"
+                          onClick={() => handleSort('joined')}
+                        >
+                          Se unio <SortIcon col="joined" />
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-10 pr-6" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredMembers.map((member) => {
+                      const fullName   = `${member.user.firstName} ${member.user.lastName}`;
+                      const colorClass = getAvatarColor(fullName);
+                      const isChecked  = selected.has(member.id);
+                      const isSelected = selectedMember?.id === member.id;
+                      return (
+                        <TableRow
+                          key={member.id}
+                          data-state={isChecked ? 'selected' : undefined}
+                          className={`cursor-pointer transition-colors ${isChecked ? 'bg-muted/40' : ''} ${isSelected ? 'bg-primary/5' : ''}`}
+                          onClick={() => setSelectedMember(member)}
+                        >
+                          <TableCell className="pl-6" onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={() => toggleOne(member.id)}
+                              aria-label={`Seleccionar ${fullName}`}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="size-8 shrink-0">
+                                <AvatarImage src={member.user.avatarUrl ?? undefined} />
+                                <AvatarFallback className={`text-xs text-white ${colorClass}`}>
+                                  {getInitials(member.user.firstName, member.user.lastName)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0">
+                                <div className="font-medium text-sm leading-none truncate">{fullName}</div>
+                                <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                                  {member.user.email}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            value={String(member.role.id)}
-                            onValueChange={(val) => handleRoleChange(member.id, Number(val))}
-                          >
-                            <SelectTrigger className="h-7 text-xs w-36 bg-transparent">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {roles?.map((role) => (
-                                <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <span className="size-1.5 rounded-full bg-emerald-500 block" />
-                            <span className="text-xs text-muted-foreground">Activo</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {formatDate(member.joinedAt)}
-                        </TableCell>
-                        <TableCell className="pr-6">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon-xs">
-                                <MoreHorizontal className="size-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => setMemberToDelete({ id: member.id, email: member.user.email, name: fullName })}
+                          </TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Select
+                              value={String(member.role.id)}
+                              onValueChange={(val) => handleRoleChange(member.id, Number(val))}
+                            >
+                              <SelectTrigger className="h-7 text-xs w-36 bg-transparent">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {roles?.map((role) => (
+                                  <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              <span className="size-1.5 rounded-full bg-emerald-500 block" />
+                              <span className="text-xs text-muted-foreground">Activo</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {formatDate(member.joinedAt)}
+                          </TableCell>
+                          <TableCell className="pr-6" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon-xs">
+                                  <MoreHorizontal className="size-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => setSelectedMember(member)}
+                                >
+                                  <Users className="size-4" />
+                                  Ver detalles
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() =>
+                                    setMemberToDelete({
+                                      id: member.id,
+                                      email: member.user.email,
+                                      name: fullName,
+                                    })
+                                  }
+                                >
+                                  <Trash2 className="size-4" />
+                                  Eliminar miembro
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {filteredMembers.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="py-16 text-center">
+                          <div className="flex flex-col items-center gap-2">
+                            <Users className="size-10 text-muted-foreground/30" />
+                            <p className="text-sm font-medium text-muted-foreground">
+                              {search || roleFilter !== 'all' ? 'No se encontraron miembros' : 'No hay miembros'}
+                            </p>
+                            {(search || roleFilter !== 'all') && (
+                              <button
+                                onClick={() => { setSearch(''); setRoleFilter('all'); }}
+                                className="text-xs text-primary hover:underline"
                               >
-                                <Trash2 className="size-4" />
-                                Eliminar miembro
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                                Limpiar filtros
+                              </button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
-                  {filteredMembers.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="py-16 text-center">
-                        <div className="flex flex-col items-center gap-2">
-                          <Users className="size-10 text-muted-foreground/30" />
-                          <p className="text-sm font-medium text-muted-foreground">
-                            {search || roleFilter !== 'all' ? 'No se encontraron miembros' : 'No hay miembros'}
-                          </p>
-                          {(search || roleFilter !== 'all') && (
-                            <button onClick={() => { setSearch(''); setRoleFilter('all'); }} className="text-xs text-primary hover:underline">
-                              Limpiar filtros
-                            </button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -705,22 +1054,35 @@ export default function MembersPage() {
                 {search || roleFilter !== 'all' ? 'No se encontraron miembros' : 'No hay miembros'}
               </p>
               {(search || roleFilter !== 'all') && (
-                <button onClick={() => { setSearch(''); setRoleFilter('all'); }} className="text-xs text-primary hover:underline">
+                <button
+                  onClick={() => { setSearch(''); setRoleFilter('all'); }}
+                  className="text-xs text-primary hover:underline"
+                >
                   Limpiar filtros
                 </button>
               )}
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredMembers.map((member) => {
                 const fullName   = `${member.user.firstName} ${member.user.lastName}`;
                 const colorClass = getAvatarColor(fullName);
                 const isChecked  = selected.has(member.id);
+                const isSelected = selectedMember?.id === member.id;
                 return (
-                  <Card key={member.id} className={`shadow-sm bg-white dark:bg-card transition-all ${isChecked ? 'ring-2 ring-primary' : ''}`}>
+                  <Card
+                    key={member.id}
+                    className={`shadow-sm bg-white dark:bg-card transition-all cursor-pointer hover:shadow-md ${isChecked ? 'ring-2 ring-primary' : ''} ${isSelected ? 'ring-2 ring-primary/60' : ''}`}
+                    onClick={() => setSelectedMember(member)}
+                  >
                     <CardContent className="pt-5 pb-4">
                       <div className="flex items-start gap-3">
-                        <Checkbox checked={isChecked} onCheckedChange={() => toggleOne(member.id)} className="mt-0.5" />
+                        <Checkbox
+                          checked={isChecked}
+                          onCheckedChange={() => toggleOne(member.id)}
+                          className="mt-0.5"
+                          onClick={(e) => e.stopPropagation()}
+                        />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-3">
                             <Avatar className="size-10 shrink-0">
@@ -734,7 +1096,7 @@ export default function MembersPage() {
                               <p className="text-xs text-muted-foreground truncate">{member.user.email}</p>
                             </div>
                             <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                                 <Button variant="ghost" size="icon-xs" className="shrink-0">
                                   <MoreHorizontal className="size-4" />
                                 </Button>
@@ -742,7 +1104,10 @@ export default function MembersPage() {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
                                   className="text-destructive focus:text-destructive"
-                                  onClick={() => setMemberToDelete({ id: member.id, email: member.user.email, name: fullName })}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMemberToDelete({ id: member.id, email: member.user.email, name: fullName });
+                                  }}
                                 >
                                   <Trash2 className="size-4" />
                                   Eliminar miembro
@@ -754,8 +1119,14 @@ export default function MembersPage() {
                           <div className="space-y-2.5">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground">Rol</span>
-                              <Select value={String(member.role.id)} onValueChange={(val) => handleRoleChange(member.id, Number(val))}>
-                                <SelectTrigger className="h-6 text-xs w-32 border-0 bg-muted/60 px-2">
+                              <Select
+                                value={String(member.role.id)}
+                                onValueChange={(val) => handleRoleChange(member.id, Number(val))}
+                              >
+                                <SelectTrigger
+                                  className="h-6 text-xs w-32 border-0 bg-muted/60 px-2"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -788,7 +1159,7 @@ export default function MembersPage() {
         )}
 
         {/* ── Pending invitations ──────────────────────────────────────────── */}
-        <Card className="shadow-sm bg-white dark:bg-card mt-6">
+        <Card className="shadow-sm bg-white dark:bg-card">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Clock className="size-4 text-muted-foreground" />
@@ -802,59 +1173,74 @@ export default function MembersPage() {
           <CardContent>
             {invitationsLoading ? (
               <div className="space-y-2">
-                {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
               </div>
             ) : invitations && invitations.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Correo</TableHead>
-                    <TableHead className="w-44">Rol</TableHead>
-                    <TableHead className="w-36">Invitado</TableHead>
-                    <TableHead className="w-24" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {invitations.map((inv) => (
-                    <TableRow key={inv.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="flex size-8 items-center justify-center rounded-full bg-muted">
-                            <Mail className="size-3.5 text-muted-foreground" />
-                          </div>
-                          <span className="text-sm font-medium">{inv.email}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="text-xs">{inv.role.name}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(inv.invitedAt)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon-xs" onClick={() => inviteMember.mutate({ email: inv.email, roleId: inv.role.id })} disabled={inviteMember.isPending}>
-                                <RefreshCw className="size-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Reenviar invitacion</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon-xs" onClick={() => cancelInvitation.mutate(inv.id)} disabled={cancelInvitation.isPending} className="text-muted-foreground hover:text-destructive">
-                                <X className="size-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Cancelar invitacion</TooltipContent>
-                          </Tooltip>
-                        </div>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Correo</TableHead>
+                      <TableHead className="w-44">Rol</TableHead>
+                      <TableHead className="w-36">Invitado</TableHead>
+                      <TableHead className="w-24" />
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {invitations.map((inv) => (
+                      <TableRow key={inv.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="flex size-8 items-center justify-center rounded-full bg-muted">
+                              <Mail className="size-3.5 text-muted-foreground" />
+                            </div>
+                            <span className="text-sm font-medium">{inv.email}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="text-xs">{inv.role.name}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(inv.invitedAt)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  onClick={() => inviteMember.mutate({ email: inv.email, roleId: inv.role.id })}
+                                  disabled={inviteMember.isPending}
+                                >
+                                  <RefreshCw className="size-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Reenviar invitacion</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  onClick={() => cancelInvitation.mutate(inv.id)}
+                                  disabled={cancelInvitation.isPending}
+                                  className="text-muted-foreground hover:text-destructive"
+                                >
+                                  <X className="size-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Cancelar invitacion</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             ) : (
               <div className="flex flex-col items-center gap-2 py-8">
                 <Mail className="size-8 text-muted-foreground/40" />
@@ -867,6 +1253,21 @@ export default function MembersPage() {
         {/* ═══════════════════════════════════════════════════════════════════
             DIALOGS & SHEETS
         ═══════════════════════════════════════════════════════════════════ */}
+
+        {/* ── Member detail panel ───────────────────────────────────────────── */}
+        <Sheet open={!!selectedMember} onOpenChange={(open) => { if (!open) setSelectedMember(null); }}>
+          <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+            {selectedMember && (
+              <MemberDetailPanel
+                member={selectedMember}
+                roles={roles}
+                orgId={orgId}
+                updateRole={updateRole}
+                onDelete={handleDeleteFromPanel}
+              />
+            )}
+          </SheetContent>
+        </Sheet>
 
         {/* ── Notification not configured warning ──────────────────────────── */}
         <AlertDialog open={notifWarningOpen} onOpenChange={setNotifWarningOpen}>
@@ -917,7 +1318,9 @@ export default function MembersPage() {
             </AlertDialogHeader>
             <div className="space-y-2 py-2">
               <Label htmlFor="delete-confirm">
-                Escribe <strong className="font-mono text-destructive">{memberToDelete?.email}</strong> para confirmar
+                Escribe{' '}
+                <strong className="font-mono text-destructive">{memberToDelete?.email}</strong>{' '}
+                para confirmar
               </Label>
               <Input
                 id="delete-confirm"
@@ -934,7 +1337,9 @@ export default function MembersPage() {
                 disabled={deleteConfirmInput !== memberToDelete?.email || removeMember.isPending}
                 onClick={confirmDelete}
               >
-                {removeMember.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                {removeMember.isPending
+                  ? <Loader2 className="size-4 animate-spin" />
+                  : <Trash2 className="size-4" />}
                 Eliminar miembro
               </Button>
             </AlertDialogFooter>
@@ -958,7 +1363,9 @@ export default function MembersPage() {
             </AlertDialogHeader>
             <div className="space-y-2 py-2">
               <Label htmlFor="bulk-delete-confirm">
-                Escribe <strong className="font-mono text-destructive">eliminar</strong> para confirmar
+                Escribe{' '}
+                <strong className="font-mono text-destructive">eliminar</strong>{' '}
+                para confirmar
               </Label>
               <Input
                 id="bulk-delete-confirm"
@@ -995,7 +1402,14 @@ export default function MembersPage() {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="invite-email">Correo electronico</Label>
-                  <Input id="invite-email" type="email" placeholder="usuario@ejemplo.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} required />
+                  <Input
+                    id="invite-email"
+                    type="email"
+                    placeholder="usuario@ejemplo.com"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="invite-role">Rol</Label>
@@ -1010,9 +1424,16 @@ export default function MembersPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={inviteMember.isPending || !inviteEmail || !inviteRoleId}>
-                  {inviteMember.isPending ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}
+                <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={inviteMember.isPending || !inviteEmail || !inviteRoleId}
+                >
+                  {inviteMember.isPending
+                    ? <Loader2 className="size-4 animate-spin" />
+                    : <Mail className="size-4" />}
                   Enviar invitacion
                 </Button>
               </DialogFooter>
@@ -1036,12 +1457,28 @@ export default function MembersPage() {
                 {/* Name row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label htmlFor="create-firstname">Nombre <span className="text-destructive">*</span></Label>
-                    <Input id="create-firstname" placeholder="Juan" value={createFirstName} onChange={(e) => setCreateFirstName(e.target.value)} required />
+                    <Label htmlFor="create-firstname">
+                      Nombre <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="create-firstname"
+                      placeholder="Juan"
+                      value={createFirstName}
+                      onChange={(e) => setCreateFirstName(e.target.value)}
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="create-lastname">Apellido <span className="text-destructive">*</span></Label>
-                    <Input id="create-lastname" placeholder="Garcia" value={createLastName} onChange={(e) => setCreateLastName(e.target.value)} required />
+                    <Label htmlFor="create-lastname">
+                      Apellido <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="create-lastname"
+                      placeholder="Garcia"
+                      value={createLastName}
+                      onChange={(e) => setCreateLastName(e.target.value)}
+                      required
+                    />
                   </div>
                 </div>
 
@@ -1049,13 +1486,24 @@ export default function MembersPage() {
 
                 {/* Email */}
                 <div className="space-y-2">
-                  <Label htmlFor="create-email">Correo electronico <span className="text-destructive">*</span></Label>
-                  <Input id="create-email" type="email" placeholder="juan@empresa.com" value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} required />
+                  <Label htmlFor="create-email">
+                    Correo electronico <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="create-email"
+                    type="email"
+                    placeholder="juan@empresa.com"
+                    value={createEmail}
+                    onChange={(e) => setCreateEmail(e.target.value)}
+                    required
+                  />
                 </div>
 
                 {/* Password */}
                 <div className="space-y-2">
-                  <Label htmlFor="create-password">Contrasena temporal <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="create-password">
+                    Contrasena temporal <span className="text-destructive">*</span>
+                  </Label>
                   <div className="relative">
                     <Input
                       id="create-password"
@@ -1066,18 +1514,28 @@ export default function MembersPage() {
                       required
                       minLength={8}
                     />
-                    <Button type="button" variant="ghost" size="icon-xs" className="absolute right-2 top-1/2 -translate-y-1/2" onClick={() => setShowCreatePassword(!showCreatePassword)}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      className="absolute right-2 top-1/2 -translate-y-1/2"
+                      onClick={() => setShowCreatePassword(!showCreatePassword)}
+                    >
                       {showCreatePassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">El usuario debera cambiar su contrasena al iniciar sesion.</p>
+                  <p className="text-xs text-muted-foreground">
+                    El usuario debera cambiar su contrasena al iniciar sesion.
+                  </p>
                 </div>
 
                 <Separator />
 
                 {/* Role */}
                 <div className="space-y-2">
-                  <Label htmlFor="create-role">Rol <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="create-role">
+                    Rol <span className="text-destructive">*</span>
+                  </Label>
                   <Select value={createRoleId} onValueChange={setCreateRoleId}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar rol" /></SelectTrigger>
                     <SelectContent>
@@ -1086,18 +1544,26 @@ export default function MembersPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">Determina los permisos de acceso del nuevo miembro.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Determina los permisos de acceso del nuevo miembro.
+                  </p>
                 </div>
 
                 {/* Email notification note */}
                 <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/50 px-4 py-3 text-sm text-blue-700 dark:text-blue-300 flex items-start gap-2">
                   <Mail className="size-4 mt-0.5 shrink-0" />
-                  <p>Se enviara un correo a <strong>{createEmail || 'la direccion indicada'}</strong> con las credenciales de acceso.</p>
+                  <p>
+                    Se enviara un correo a{' '}
+                    <strong>{createEmail || 'la direccion indicada'}</strong>{' '}
+                    con las credenciales de acceso.
+                  </p>
                 </div>
               </div>
 
               <SheetFooter className="border-t px-6 py-4 flex-row gap-3 justify-end">
-                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+                  Cancelar
+                </Button>
                 <Button
                   type="submit"
                   disabled={
@@ -1106,7 +1572,9 @@ export default function MembersPage() {
                     !createEmail || !createPassword || !createRoleId
                   }
                 >
-                  {createMemberMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <UserRoundPlus className="size-4" />}
+                  {createMemberMut.isPending
+                    ? <Loader2 className="size-4 animate-spin" />
+                    : <UserRoundPlus className="size-4" />}
                   Crear persona
                 </Button>
               </SheetFooter>
