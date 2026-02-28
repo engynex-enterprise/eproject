@@ -14,6 +14,9 @@ import {
   CheckSquare,
   Square,
   Search,
+  ShieldCheck,
+  ShieldAlert,
+  KeyRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -105,6 +108,38 @@ const actionLabels: Record<string, string> = {
   update_own: 'Editar propios',
   delete_any: 'Eliminar cualquiera',
 };
+
+// ── Stat card ─────────────────────────────────────────────────────────────────
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  iconBg,
+  iconColor,
+}: {
+  label: string;
+  value: number | string;
+  icon: React.ElementType;
+  iconBg: string;
+  iconColor: string;
+}) {
+  return (
+    <Card className="shadow-sm bg-white dark:bg-card">
+      <CardContent className="pt-5 pb-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs text-muted-foreground font-medium mb-1">{label}</p>
+            <p className="text-2xl font-bold tracking-tight">{value}</p>
+          </div>
+          <div className={`flex size-9 items-center justify-center rounded-lg ${iconBg}`}>
+            <Icon className={`size-4 ${iconColor}`} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -251,16 +286,26 @@ export default function RolesPage() {
 
   if (rolesLoading) {
     return (
-      <div className="flex-1 max-w-5xl space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-80" />
-        <div className="flex gap-6 mt-4">
-          <div className="w-72 space-y-2">
+      <div className="flex flex-1 flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+          <Skeleton className="h-9 w-28" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+          ))}
+        </div>
+        <div className="flex gap-6">
+          <div className="w-72 space-y-2 shrink-0">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full" />
+              <Skeleton key={i} className="h-14 w-full rounded-xl" />
             ))}
           </div>
-          <Skeleton className="flex-1 h-80" />
+          <Skeleton className="flex-1 h-96 rounded-xl" />
         </div>
       </div>
     );
@@ -273,12 +318,13 @@ export default function RolesPage() {
 
   return (
     <TooltipProvider>
-      <div className="flex-1 max-w-5xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-1 flex-col gap-6">
+
+        {/* ── Header ──────────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Roles y permisos</h1>
-            <p className="text-muted-foreground text-sm mt-1">
+            <p className="text-sm text-muted-foreground">
               Configura los roles y sus permisos para controlar el acceso.
             </p>
           </div>
@@ -338,9 +384,43 @@ export default function RolesPage() {
           </Dialog>
         </div>
 
-        <div className="flex gap-6">
-          {/* ── Roles list ────────────────────────────────────────────────── */}
-          <Card className="w-72 shrink-0 self-start">
+        {/* ── Stats ───────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard
+            label="Total roles"
+            value={roles?.length ?? 0}
+            icon={Shield}
+            iconBg="bg-slate-100 dark:bg-slate-800"
+            iconColor="text-slate-600 dark:text-slate-400"
+          />
+          <StatCard
+            label="Personalizados"
+            value={customRoles.length}
+            icon={ShieldCheck}
+            iconBg="bg-violet-100 dark:bg-violet-900/40"
+            iconColor="text-violet-600 dark:text-violet-400"
+          />
+          <StatCard
+            label="Del sistema"
+            value={systemRoles.length}
+            icon={ShieldAlert}
+            iconBg="bg-amber-100 dark:bg-amber-900/40"
+            iconColor="text-amber-600 dark:text-amber-400"
+          />
+          <StatCard
+            label="Permisos disponibles"
+            value={allPermissions?.length ?? 0}
+            icon={KeyRound}
+            iconBg="bg-blue-100 dark:bg-blue-900/40"
+            iconColor="text-blue-600 dark:text-blue-400"
+          />
+        </div>
+
+        {/* ── Split panel ─────────────────────────────────────────────────── */}
+        <div className="flex gap-6 items-start">
+
+          {/* Roles list */}
+          <Card className="w-72 shrink-0 shadow-sm bg-white dark:bg-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Roles</CardTitle>
               <CardDescription>
@@ -393,10 +473,10 @@ export default function RolesPage() {
             </CardContent>
           </Card>
 
-          {/* ── Role detail ───────────────────────────────────────────────── */}
+          {/* Role detail */}
           <div className="flex-1 min-w-0">
             {selectedRole ? (
-              <Card>
+              <Card className="shadow-sm bg-white dark:bg-card">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2.5 flex-wrap">
@@ -595,7 +675,7 @@ export default function RolesPage() {
                                 )}
                               </div>
 
-                              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                 {perms.map((perm) => {
                                   const isChecked = selectedPermIds.has(perm.id);
                                   return (
@@ -641,7 +721,7 @@ export default function RolesPage() {
                 </CardContent>
               </Card>
             ) : (
-              <Card>
+              <Card className="shadow-sm bg-white dark:bg-card">
                 <CardContent className="flex flex-col items-center justify-center py-20 text-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted mb-4">
                     <Shield className="size-8 text-muted-foreground/60" />
@@ -664,6 +744,7 @@ export default function RolesPage() {
             )}
           </div>
         </div>
+
       </div>
     </TooltipProvider>
   );
