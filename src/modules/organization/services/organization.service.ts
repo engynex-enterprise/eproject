@@ -402,25 +402,29 @@ export async function updateSecurityConfig(
   return DEFAULT_SECURITY_CONFIG;
 }
 
-// ─── Audit Log (stub — backend endpoint pending) ────────────────────────────
+// ─── Audit Log ──────────────────────────────────────────────────────────────
 
 export interface AuditEntry {
   id: number;
   timestamp: string;
-  userId: number;
+  userId: number | null;
   userName: string;
   userEmail: string;
-  action: string;
-  resource: string;
-  resourceId: string;
-  ipAddress: string;
+  userAvatarUrl: string | null;
+  action: string;                   // CREATE | UPDATE | DELETE
+  resource: string;                 // URL segment: members, roles, invitations, …
+  resourceId: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  metadata: Record<string, any>;
 }
 
 export interface AuditFilters {
   userId?: number;
   action?: string;
-  dateFrom?: string;
-  dateTo?: string;
+  resourceType?: string;
+  startDate?: string;
+  endDate?: string;
   page?: number;
   limit?: number;
 }
@@ -432,12 +436,79 @@ export interface AuditLogResult {
   totalPages: number;
 }
 
+interface RawAuditLog {
+  id: number;
+  orgId: number;
+  userId: number | null;
+  action: string;
+  resourceType: string;
+  resourceId: number | null;
+  metadata: Record<string, any>;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  user: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    avatarUrl: string | null;
+  } | null;
+}
+
+function mapAuditEntry(log: RawAuditLog): AuditEntry {
+  const userName = log.user
+    ? `${log.user.firstName} ${log.user.lastName}`.trim()
+    : 'Sistema';
+  return {
+    id: log.id,
+    timestamp: log.createdAt,
+    userId: log.userId,
+    userName: userName || 'Usuario desconocido',
+    userEmail: log.user?.email ?? '',
+    userAvatarUrl: log.user?.avatarUrl ?? null,
+    action: log.action,
+    resource: log.resourceType,
+    resourceId: log.resourceId != null ? String(log.resourceId) : null,
+    ipAddress: log.ipAddress,
+    userAgent: log.userAgent,
+    metadata: log.metadata ?? {},
+  };
+}
+
+// TransformResponseInterceptor hoists { data: logs, meta } to
+// { success, data: logs, meta, timestamp } at the root level.
+interface AuditApiResponse {
+  success: boolean;
+  data: RawAuditLog[];
+  meta: { page: number; limit: number; total: number; totalPages: number };
+  timestamp: string;
+}
+
 export async function getAuditLog(
-  _orgId: number,
-  _filters?: AuditFilters,
+  orgId: number,
+  filters?: AuditFilters,
 ): Promise<AuditLogResult> {
-  console.warn('[audit] getAuditLog: backend endpoint not yet implemented');
-  return { entries: [], total: 0, page: 1, totalPages: 0 };
+  const params = new URLSearchParams();
+  if (filters?.action) params.set('action', filters.action);
+  if (filters?.resourceType) params.set('resourceType', filters.resourceType);
+  if (filters?.userId) params.set('userId', String(filters.userId));
+  if (filters?.startDate) params.set('startDate', filters.startDate);
+  if (filters?.endDate) params.set('endDate', filters.endDate);
+  if (filters?.page) params.set('page', String(filters.page));
+  if (filters?.limit) params.set('limit', String(filters.limit));
+
+  const query = params.toString();
+  const url = `/organizations/${orgId}/audit-log${query ? `?${query}` : ''}`;
+
+  const res = await apiClient.get<AuditApiResponse>(url);
+
+  return {
+    entries: (res.data ?? []).map(mapAuditEntry),
+    total: res.meta?.total ?? 0,
+    page: res.meta?.page ?? 1,
+    totalPages: res.meta?.totalPages ?? 0,
+  };
 }
 
 // ─── API Keys (stub — backend endpoint pending) ─────────────────────────────
