@@ -60,7 +60,7 @@ export default function MainLayout({
   return (
     <SidebarProvider>
       {isProjectSettings ? <ProjectSettingsSidebar /> : isProjectRoute ? <ProjectSidebar /> : isOrgRoute ? <OrgSidebar /> : <AppSidebar />}
-      <SidebarInset className="min-w-0 overflow-x-hidden">
+      <SidebarInset className="min-w-0 overflow-x-clip">
         <SiteHeader />
         <main className="flex-1 min-w-0 p-4 md:p-6">{children}</main>
       </SidebarInset>
