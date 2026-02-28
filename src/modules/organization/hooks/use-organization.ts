@@ -23,6 +23,7 @@ import {
   updateSsoConfig,
   getNotificationConfig,
   updateNotificationConfig,
+  testEmailConnection,
   getStorageConfig,
   updateStorageConfig,
   getSecurityConfig,
@@ -334,6 +335,22 @@ export function useUpdateNotificationConfig(orgId: number) {
     },
     onError: (error) => {
       toast.error({ title: 'Error al guardar las notificaciones', description: errorMessage(error) });
+    },
+  });
+}
+
+export function useTestEmailConnection(orgId: number) {
+  return useMutation({
+    mutationFn: () => testEmailConnection(orgId),
+    onSuccess: (result) => {
+      if (result.success) {
+        toast.success({ title: 'Conexion exitosa', description: result.message });
+      } else {
+        toast.error({ title: 'Error de conexion', description: result.message });
+      }
+    },
+    onError: (error) => {
+      toast.error({ title: 'Error al probar la conexion', description: errorMessage(error) });
     },
   });
 }

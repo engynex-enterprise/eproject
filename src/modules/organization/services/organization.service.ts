@@ -168,7 +168,7 @@ export async function inviteMember(
   data: InviteMemberData,
 ): Promise<PendingInvitation> {
   const res = await apiClient.post<ApiResponse<PendingInvitation>>(
-    `/organizations/${orgId}/members/invite`,
+    `/organizations/${orgId}/invitations`,
     data,
   );
   return res.data;
@@ -208,7 +208,7 @@ export async function getPendingInvitations(
   orgId: number,
 ): Promise<PendingInvitation[]> {
   const res = await apiClient.get<ApiResponse<PendingInvitation[]>>(
-    `/organizations/${orgId}/members/invitations`,
+    `/organizations/${orgId}/invitations`,
   );
   return res.data;
 }
@@ -218,7 +218,7 @@ export async function cancelInvitation(
   invitationId: number,
 ): Promise<void> {
   await apiClient.delete(
-    `/organizations/${orgId}/members/invitations/${invitationId}`,
+    `/organizations/${orgId}/invitations/${invitationId}`,
   );
 }
 
@@ -322,6 +322,18 @@ export async function updateNotificationConfig(
   const res = await apiClient.patch<ApiResponse<NotificationChannelConfig>>(
     `/organizations/${orgId}/notification-config`,
     data,
+  );
+  return res.data;
+}
+
+export interface EmailTestResult {
+  success: boolean;
+  message: string;
+}
+
+export async function testEmailConnection(orgId: number): Promise<EmailTestResult> {
+  const res = await apiClient.post<ApiResponse<EmailTestResult>>(
+    `/organizations/${orgId}/notification-config/test`,
   );
   return res.data;
 }

@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { useAuthStore } from '@/shared/stores/auth.store';
-import { useNotificationConfig, useUpdateNotificationConfig } from '@/modules/organization/hooks/use-organization';
+import { useNotificationConfig, useUpdateNotificationConfig, useTestEmailConnection } from '@/modules/organization/hooks/use-organization';
 import { useSileoConfigStore, type SileoPosition, type SileoTheme } from '@/shared/stores/sileo-config.store';
 import type { EmailTemplate } from '@/modules/organization/services/organization.service';
 
@@ -451,6 +451,7 @@ export default function OrgNotificationsPage() {
 
   const { data: config, isLoading, isError } = useNotificationConfig(orgId);
   const updateConfig = useUpdateNotificationConfig(orgId);
+  const testEmail = useTestEmailConnection(orgId);
   const { config: sileoStore, updateConfig: updateSileoConfig } = useSileoConfigStore();
 
   // Email general
@@ -842,6 +843,21 @@ export default function OrgNotificationsPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Test connection */}
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                className="gap-2"
+                disabled={testEmail.isPending || !emailEnabled}
+                onClick={() => testEmail.mutate()}
+              >
+                {testEmail.isPending
+                  ? <Loader2 className="size-4 animate-spin" />
+                  : <Sparkles className="size-4" />}
+                Probar conexion
+              </Button>
+            </div>
           </div>
         </div>
 
