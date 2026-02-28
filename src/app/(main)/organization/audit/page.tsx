@@ -555,7 +555,7 @@ export default function AuditPage() {
         </div>
 
         {/* ── Table ──────────────────────────────────────────────────────── */}
-        <div className="rounded-xl border bg-white dark:bg-card shadow-sm overflow-hidden">
+        <div className="rounded-xl border bg-white dark:bg-card shadow-sm overflow-x-auto">
           {/* Table header bar */}
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <div className="flex items-center gap-2">
