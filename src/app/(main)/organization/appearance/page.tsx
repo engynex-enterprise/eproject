@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Upload,
   Save,
@@ -9,7 +9,10 @@ import {
   Moon,
   Paintbrush,
   Type,
-  Image,
+  Image as ImageIcon,
+  Trash2,
+  CheckCircle2,
+  Monitor,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,11 +22,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -38,23 +41,141 @@ import {
 } from '@/modules/organization/hooks/use-organization';
 import { cn } from '@/lib/utils';
 
-const accentColors = [
-  { name: 'Azul', value: '#3b82f6', class: 'bg-blue-500' },
-  { name: 'Verde', value: '#22c55e', class: 'bg-green-500' },
-  { name: 'Amarillo', value: '#eab308', class: 'bg-yellow-500' },
-  { name: 'Naranja', value: '#f97316', class: 'bg-orange-500' },
-  { name: 'Morado', value: '#a855f7', class: 'bg-purple-500' },
-  { name: 'Rojo', value: '#ef4444', class: 'bg-red-500' },
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const ACCENT_PRESETS = [
+  { name: 'Azul',    value: '#3b82f6', tw: 'bg-blue-500'   },
+  { name: 'Indigo',  value: '#6366f1', tw: 'bg-indigo-500' },
+  { name: 'Verde',   value: '#22c55e', tw: 'bg-green-500'  },
+  { name: 'Amarillo',value: '#eab308', tw: 'bg-yellow-500' },
+  { name: 'Naranja', value: '#f97316', tw: 'bg-orange-500' },
+  { name: 'Morado',  value: '#a855f7', tw: 'bg-purple-500' },
+  { name: 'Rosa',    value: '#ec4899', tw: 'bg-pink-500'   },
+  { name: 'Rojo',    value: '#ef4444', tw: 'bg-red-500'    },
 ];
 
-const fontFamilies = [
-  { label: 'Inter', value: 'Inter' },
-  { label: 'Geist Sans', value: 'Geist Sans' },
-  { label: 'System UI', value: 'system-ui' },
-  { label: 'Roboto', value: 'Roboto' },
-  { label: 'Open Sans', value: 'Open Sans' },
-  { label: 'Nunito', value: 'Nunito' },
+const FONT_FAMILIES = [
+  { label: 'Inter',       value: 'Inter'      },
+  { label: 'Geist Sans',  value: 'Geist Sans' },
+  { label: 'System UI',   value: 'system-ui'  },
+  { label: 'Roboto',      value: 'Roboto'     },
+  { label: 'Open Sans',   value: 'Open Sans'  },
+  { label: 'Nunito',      value: 'Nunito'     },
 ];
+
+type DarkMode = 'light' | 'dark';
+
+// ─── Logo upload helper ───────────────────────────────────────────────────────
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ─── LogoUploadZone ───────────────────────────────────────────────────────────
+
+function LogoUploadZone({
+  label,
+  hint,
+  value,
+  onChange,
+  dark = false,
+}: {
+  label: string;
+  hint: string;
+  value: string | null;
+  onChange: (url: string | null) => void;
+  dark?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    const dataUrl = await readFileAsDataUrl(file);
+    onChange(dataUrl);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">{label}</Label>
+      <p className="text-xs text-muted-foreground">{hint}</p>
+      <div className="flex items-start gap-4">
+        {/* Preview */}
+        <div
+          className={cn(
+            'flex size-20 shrink-0 items-center justify-center rounded-xl border-2 border-dashed transition-colors cursor-pointer',
+            dark
+              ? 'bg-zinc-900 border-zinc-600 hover:bg-zinc-800'
+              : 'bg-white border-muted-foreground/25 hover:bg-zinc-50',
+          )}
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleDrop}
+        >
+          {value ? (
+            <img
+              src={value}
+              alt={label}
+              className="size-16 rounded-lg object-contain"
+            />
+          ) : (
+            <Upload className={cn('size-5', dark ? 'text-zinc-500' : 'text-muted-foreground')} />
+          )}
+        </div>
+        {/* Actions */}
+        <div className="flex flex-col gap-2 pt-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => inputRef.current?.click()}
+          >
+            <Upload className="size-3.5" />
+            {value ? 'Cambiar imagen' : 'Subir imagen'}
+          </Button>
+          {value && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() => onChange(null)}
+            >
+              <Trash2 className="size-3.5" />
+              Eliminar
+            </Button>
+          )}
+          <p className="text-[11px] text-muted-foreground leading-tight">
+            PNG, JPG, SVG o WebP. Max 2 MB.
+          </p>
+        </div>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFile(file);
+          e.target.value = '';
+        }}
+      />
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AppearancePage() {
   const { currentOrgId } = useAuthStore();
@@ -63,28 +184,32 @@ export default function AppearancePage() {
   const { data: appearance, isLoading, isError } = useAppearance(orgId);
   const updateAppearance = useUpdateAppearance(orgId);
 
+  // ── Local form state ───────────────────────────────────────────────────────
   const [accentColor, setAccentColor] = useState('#3b82f6');
-  const [customColor, setCustomColor] = useState('');
-  const [fontFamily, setFontFamily] = useState('Inter');
-  const [darkMode, setDarkMode] = useState(false);
-  const [isCustomColor, setIsCustomColor] = useState(false);
+  const [isCustomColor, setIsCustomColor]   = useState(false);
+  const [customColor, setCustomColor]       = useState('');
+  const [fontFamily, setFontFamily]         = useState('Inter');
+  const [darkMode, setDarkMode]             = useState<DarkMode>('light');
+  const [logoUrl, setLogoUrl]               = useState<string | null>(null);
+  const [logoDarkUrl, setLogoDarkUrl]       = useState<string | null>(null);
+  const [faviconUrl, setFaviconUrl]         = useState<string | null>(null);
 
+  // ── Sync from fetched data ─────────────────────────────────────────────────
   useEffect(() => {
-    if (appearance) {
-      setAccentColor(appearance.accentColor);
-      setFontFamily(appearance.fontFamily);
-      setDarkMode(appearance.darkMode);
-      const isPreset = accentColors.some(
-        (c) => c.value === appearance.accentColor,
-      );
-      if (!isPreset) {
-        setIsCustomColor(true);
-        setCustomColor(appearance.accentColor);
-      }
-    }
+    if (!appearance) return;
+    const color = appearance.accentColor ?? appearance.primaryColor ?? '#3b82f6';
+    setAccentColor(color);
+    setFontFamily(appearance.fontFamily ?? 'Inter');
+    setDarkMode(appearance.darkMode ? 'dark' : 'light');
+    setLogoUrl(appearance.logoUrl ?? null);
+    setLogoDarkUrl(appearance.logoDarkUrl ?? null);
+    setFaviconUrl(appearance.faviconUrl ?? null);
+    const isPreset = ACCENT_PRESETS.some((p) => p.value === color);
+    if (!isPreset) { setIsCustomColor(true); setCustomColor(color); }
   }, [appearance]);
 
-  const handleSelectColor = (color: string) => {
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  const handleSelectPreset = (color: string) => {
     setAccentColor(color);
     setIsCustomColor(false);
   };
@@ -99,437 +224,381 @@ export default function AppearancePage() {
     updateAppearance.mutate({
       accentColor,
       fontFamily,
-      darkMode,
+      darkMode: darkMode === 'dark',
+      logoUrl,
+      logoDarkUrl,
+      faviconUrl,
     });
   };
 
+  // ── Loading / error ────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="flex-1 space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-80" />
-        <Skeleton className="h-64 w-full" />
+      <div className="flex flex-1 flex-col gap-6">
+        <Skeleton className="h-9 w-56" />
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-40 w-full rounded-xl" />
+        ))}
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="flex-1">
-        <Card className="border-destructive">
-          <CardContent className="pt-6">
-            <p className="text-destructive text-sm">
-              Error al cargar la configuracion de apariencia.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="flex flex-1 flex-col gap-6">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-5 py-4 text-sm text-destructive">
+          Error al cargar la configuracion de apariencia.
+        </div>
       </div>
     );
   }
 
+  const activePreset = ACCENT_PRESETS.find((p) => p.value === accentColor);
+
   return (
-    <div className="flex-1 max-w-3xl pb-24">
-        <div className="mb-6">
+    <div className="flex flex-1 flex-col gap-6 pb-20">
+
+      {/* ── Page header ─────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between border-b pb-4">
+        <div>
           <h1 className="text-2xl font-bold tracking-tight">Apariencia</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Personaliza la apariencia de tu organizacion.
+          <p className="text-sm text-muted-foreground mt-1">
+            Personaliza la apariencia de la organizacion. Los cambios se aplican
+            en tiempo real para todos los miembros.
           </p>
         </div>
+        {appearance && (
+          <Badge variant="secondary" className="text-xs gap-1.5">
+            <span
+              className="size-2 rounded-full"
+              style={{ backgroundColor: accentColor }}
+            />
+            {activePreset?.name ?? 'Personalizado'}
+          </Badge>
+        )}
+      </div>
 
-        <div className="space-y-6">
-          {/* Logo & Favicon */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                <div className="flex items-center gap-2">
-                  <Image className="size-4" />
-                  Imagenes de marca
-                </div>
-              </CardTitle>
-              <CardDescription>
-                Sube el logo para modo claro y modo oscuro de tu organizacion. Se usa la version correcta segun el tema activo.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Logo — Modo claro */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Sun className="size-3.5 text-amber-500" />
-                  <Label>Logo — Modo claro</Label>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex size-20 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-white cursor-pointer hover:bg-zinc-50 transition-colors">
-                    {appearance?.logoUrl ? (
-                      <img
-                        src={appearance.logoUrl}
-                        alt="Logo claro"
-                        className="size-20 rounded-lg object-contain p-1"
-                      />
-                    ) : (
-                      <Upload className="size-6 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div>
-                    <Button type="button" variant="outline" size="sm">
-                      <Upload className="size-4" />
-                      Subir logo claro
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      PNG, JPG o SVG. Recomendado 256x256px. Max 2MB.
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Usa colores oscuros para que se vea bien en fondo blanco.
-                    </p>
-                  </div>
-                </div>
-              </div>
+      {/* ── Brand images ────────────────────────────────────────────── */}
+      <Card className="shadow-sm bg-white dark:bg-card">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ImageIcon className="size-4" />
+            Imagenes de marca
+          </CardTitle>
+          <CardDescription>
+            El logo correcto se muestra segun el tema activo (claro u oscuro).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center gap-2 mb-1">
+            <Sun className="size-3.5 text-amber-500" />
+            <span className="text-sm font-medium">Logo — Modo claro</span>
+          </div>
+          <LogoUploadZone
+            label=""
+            hint="Usa colores oscuros para que se vea bien sobre fondo blanco. Recomendado 256×64px."
+            value={logoUrl}
+            onChange={setLogoUrl}
+            dark={false}
+          />
 
-              <Separator />
+          <Separator />
 
-              {/* Logo — Modo oscuro */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Moon className="size-3.5 text-indigo-400" />
-                  <Label>Logo — Modo oscuro</Label>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex size-20 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-zinc-900 cursor-pointer hover:bg-zinc-800 transition-colors">
-                    {appearance?.logoUrl ? (
-                      <img
-                        src={appearance.logoUrl}
-                        alt="Logo oscuro"
-                        className="size-20 rounded-lg object-contain p-1"
-                      />
-                    ) : (
-                      <Upload className="size-6 text-zinc-500" />
-                    )}
-                  </div>
-                  <div>
-                    <Button type="button" variant="outline" size="sm">
-                      <Upload className="size-4" />
-                      Subir logo oscuro
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      PNG, JPG o SVG. Recomendado 256x256px. Max 2MB.
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Usa colores claros o blancos para que se vea bien en fondo oscuro.
-                    </p>
-                  </div>
-                </div>
-              </div>
+          <div className="flex items-center gap-2 mb-1">
+            <Moon className="size-3.5 text-indigo-400" />
+            <span className="text-sm font-medium">Logo — Modo oscuro</span>
+          </div>
+          <LogoUploadZone
+            label=""
+            hint="Usa colores claros o blancos para que se vea bien sobre fondo oscuro. Recomendado 256×64px."
+            value={logoDarkUrl}
+            onChange={setLogoDarkUrl}
+            dark={true}
+          />
 
-              <Separator />
+          <Separator />
 
-              {/* Favicon */}
-              <div className="space-y-2">
-                <Label>Favicon</Label>
-                <div className="flex items-center gap-4">
-                  <div className="flex size-12 items-center justify-center rounded-md border-2 border-dashed border-muted-foreground/25 bg-muted/50 cursor-pointer hover:bg-muted transition-colors">
-                    {appearance?.faviconUrl ? (
-                      <img
-                        src={appearance.faviconUrl}
-                        alt="Favicon"
-                        className="size-12 rounded-md object-cover"
-                      />
-                    ) : (
-                      <Upload className="size-4 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div>
-                    <Button type="button" variant="outline" size="sm">
-                      <Upload className="size-4" />
-                      Subir favicon
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      ICO, PNG o SVG. Recomendado 32x32px.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div>
+            <p className="text-sm font-medium mb-1">Favicon</p>
+            <LogoUploadZone
+              label=""
+              hint="ICO, PNG o SVG. Recomendado 32×32px."
+              value={faviconUrl}
+              onChange={setFaviconUrl}
+              dark={false}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-          {/* Accent Color */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                <div className="flex items-center gap-2">
-                  <Paintbrush className="size-4" />
-                  Color de enfasis
-                </div>
-              </CardTitle>
-              <CardDescription>
-                Selecciona el color principal de la interfaz.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap gap-3">
-                {accentColors.map((color) => (
-                  <button
-                    key={color.value}
-                    onClick={() => handleSelectColor(color.value)}
-                    className={cn(
-                      'flex flex-col items-center gap-1.5 rounded-lg border-2 p-3 transition-all',
-                      accentColor === color.value && !isCustomColor
-                        ? 'border-foreground shadow-sm'
-                        : 'border-transparent hover:border-muted-foreground/25',
-                    )}
-                    title={color.name}
-                  >
-                    <div
-                      className={cn('size-8 rounded-full', color.class)}
-                    />
-                    <span className="text-xs text-muted-foreground">
-                      {color.name}
-                    </span>
-                  </button>
-                ))}
-
-                {/* Custom color */}
-                <button
-                  onClick={() => setIsCustomColor(true)}
-                  className={cn(
-                    'flex flex-col items-center gap-1.5 rounded-lg border-2 p-3 transition-all',
-                    isCustomColor
-                      ? 'border-foreground shadow-sm'
-                      : 'border-transparent hover:border-muted-foreground/25',
-                  )}
-                >
-                  <div
-                    className="size-8 rounded-full border-2 border-dashed border-muted-foreground/50"
-                    style={
-                      isCustomColor && customColor
-                        ? { backgroundColor: customColor, borderStyle: 'solid' }
-                        : undefined
-                    }
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    Custom
+      {/* ── Dark / light mode ───────────────────────────────────────── */}
+      <Card className="shadow-sm bg-white dark:bg-card">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            {darkMode === 'dark' ? <Moon className="size-4" /> : <Sun className="size-4" />}
+            Tema de la interfaz
+          </CardTitle>
+          <CardDescription>
+            Tema predeterminado para todos los miembros de la organizacion.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4 max-w-sm">
+            {([
+              { id: 'light' as const, label: 'Claro',  Icon: Sun,  bg: 'bg-white border-gray-200'   },
+              { id: 'dark'  as const, label: 'Oscuro', Icon: Moon, bg: 'bg-zinc-900 border-zinc-700' },
+            ] as const).map(({ id, label, Icon, bg }) => (
+              <button
+                key={id}
+                onClick={() => setDarkMode(id)}
+                className={cn(
+                  'relative flex flex-col gap-3 rounded-xl border-2 p-4 text-left transition-all',
+                  darkMode === id
+                    ? 'border-primary bg-primary/5 shadow-sm'
+                    : 'border-border hover:border-muted-foreground/40 hover:bg-muted/30',
+                )}
+              >
+                {darkMode === id && (
+                  <CheckCircle2 className="absolute right-2.5 top-2.5 size-4 text-primary" />
+                )}
+                <div className={cn('h-14 rounded-lg border-2', bg)} />
+                <div className="flex items-center gap-1.5">
+                  <Icon className={cn('size-3.5', darkMode === id ? 'text-primary' : 'text-muted-foreground')} />
+                  <span className={cn('text-sm font-medium', darkMode === id ? 'text-primary' : 'text-foreground')}>
+                    {label}
                   </span>
-                </button>
-              </div>
-
-              {isCustomColor && (
-                <div className="flex items-center gap-3 pt-2">
-                  <Label htmlFor="custom-color" className="shrink-0">
-                    Color personalizado
-                  </Label>
-                  <Input
-                    id="custom-color"
-                    type="color"
-                    value={customColor || '#3b82f6'}
-                    onChange={(e) => handleCustomColor(e.target.value)}
-                    className="w-12 h-10 p-1 cursor-pointer"
-                  />
-                  <Input
-                    value={customColor}
-                    onChange={(e) => handleCustomColor(e.target.value)}
-                    placeholder="#3b82f6"
-                    className="w-32"
-                  />
                 </div>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Accent color ────────────────────────────────────────────── */}
+      <Card className="shadow-sm bg-white dark:bg-card">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Paintbrush className="size-4" />
+            Color de enfasis
+          </CardTitle>
+          <CardDescription>
+            Color principal de botones, enlaces y elementos interactivos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {ACCENT_PRESETS.map((color) => (
+              <button
+                key={color.value}
+                onClick={() => handleSelectPreset(color.value)}
+                title={color.name}
+                className={cn(
+                  'flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-2.5 transition-all',
+                  accentColor === color.value && !isCustomColor
+                    ? 'border-foreground shadow-sm scale-105'
+                    : 'border-transparent hover:border-muted-foreground/25',
+                )}
+              >
+                <div className={cn('size-7 rounded-full', color.tw)} />
+                <span className="text-[11px] text-muted-foreground">{color.name}</span>
+              </button>
+            ))}
+            {/* Custom color swatch */}
+            <button
+              onClick={() => setIsCustomColor(true)}
+              className={cn(
+                'flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-2.5 transition-all',
+                isCustomColor
+                  ? 'border-foreground shadow-sm scale-105'
+                  : 'border-transparent hover:border-muted-foreground/25',
               )}
-            </CardContent>
-          </Card>
+            >
+              <div
+                className="size-7 rounded-full border-2 border-dashed border-muted-foreground/40"
+                style={isCustomColor && customColor ? { backgroundColor: customColor, borderStyle: 'solid' } : undefined}
+              />
+              <span className="text-[11px] text-muted-foreground">Custom</span>
+            </button>
+          </div>
 
-          {/* Font Family */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                <div className="flex items-center gap-2">
-                  <Type className="size-4" />
-                  Tipografia
-                </div>
-              </CardTitle>
-              <CardDescription>
-                Selecciona la familia tipografica de la interfaz.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Select value={fontFamily} onValueChange={setFontFamily}>
-                <SelectTrigger className="w-64">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {fontFamilies.map((font) => (
-                    <SelectItem key={font.value} value={font.value}>
-                      <span style={{ fontFamily: font.value }}>
-                        {font.label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
+          {isCustomColor && (
+            <div className="flex items-center gap-3 pt-1">
+              <Input
+                type="color"
+                value={customColor || '#3b82f6'}
+                onChange={(e) => handleCustomColor(e.target.value)}
+                className="w-12 h-9 p-1 cursor-pointer"
+              />
+              <Input
+                value={customColor}
+                onChange={(e) => handleCustomColor(e.target.value)}
+                placeholder="#3b82f6"
+                className="w-36 font-mono text-sm"
+              />
+              <Label className="text-sm text-muted-foreground">Color hex personalizado</Label>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-          {/* Dark Mode */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                <div className="flex items-center gap-2">
-                  {darkMode ? (
-                    <Moon className="size-4" />
-                  ) : (
-                    <Sun className="size-4" />
-                  )}
-                  Modo oscuro
-                </div>
-              </CardTitle>
-              <CardDescription>
-                Activa el modo oscuro como predeterminado para la organizacion.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-3">
-                <Switch checked={darkMode} onCheckedChange={setDarkMode} />
-                <Label>
-                  {darkMode ? 'Modo oscuro activado' : 'Modo claro activado'}
-                </Label>
-              </div>
-            </CardContent>
-          </Card>
+      {/* ── Font family ─────────────────────────────────────────────── */}
+      <Card className="shadow-sm bg-white dark:bg-card">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Type className="size-4" />
+            Tipografia
+          </CardTitle>
+          <CardDescription>
+            Familia tipografica de la interfaz para todos los miembros.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <Select value={fontFamily} onValueChange={setFontFamily}>
+              <SelectTrigger className="w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {FONT_FAMILIES.map((font) => (
+                  <SelectItem key={font.value} value={font.value}>
+                    <span style={{ fontFamily: font.value }}>{font.label}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground" style={{ fontFamily }}>
+              El texto se vera asi.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
-          {/* Preview */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Vista previa</CardTitle>
-              <CardDescription>
-                Asi se vera la interfaz con la configuracion actual.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+      {/* ── Preview ─────────────────────────────────────────────────── */}
+      <Card className="shadow-sm bg-white dark:bg-card">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Monitor className="size-4" />
+            Vista previa
+          </CardTitle>
+          <CardDescription>
+            Asi se vera la interfaz con la configuracion actual.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div
+            className={cn(
+              'rounded-xl border overflow-hidden',
+              darkMode === 'dark' ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-900',
+            )}
+            style={{ fontFamily }}
+          >
+            <div className="flex">
+              {/* Mock sidebar */}
               <div
                 className={cn(
-                  'rounded-lg border overflow-hidden',
-                  darkMode ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-900',
+                  'w-44 p-4 space-y-1.5 border-r shrink-0',
+                  darkMode === 'dark' ? 'bg-zinc-800/60 border-zinc-700' : 'bg-zinc-50 border-zinc-200',
                 )}
-                style={{ fontFamily }}
               >
-                {/* Mock sidebar */}
-                <div className="flex">
+                <div className="flex items-center gap-2 mb-4">
+                  {(darkMode === 'dark' ? logoDarkUrl : logoUrl) ? (
+                    <img
+                      src={(darkMode === 'dark' ? logoDarkUrl : logoUrl)!}
+                      alt="Logo"
+                      className="h-6 object-contain"
+                    />
+                  ) : (
+                    <>
+                      <div className="size-5 rounded" style={{ backgroundColor: accentColor }} />
+                      <span className="text-xs font-semibold">Mi Org</span>
+                    </>
+                  )}
+                </div>
+                {['Tablero', 'Backlog', 'Sprints', 'Miembros'].map((item) => (
                   <div
+                    key={item}
                     className={cn(
-                      'w-48 p-4 space-y-2 border-r',
-                      darkMode
-                        ? 'bg-zinc-800/50 border-zinc-700'
-                        : 'bg-zinc-50 border-zinc-200',
+                      'text-xs px-2 py-1.5 rounded-md transition-colors',
+                      item === 'Tablero'
+                        ? 'font-semibold'
+                        : darkMode === 'dark' ? 'text-zinc-400' : 'text-zinc-500',
+                    )}
+                    style={
+                      item === 'Tablero'
+                        ? { backgroundColor: `${accentColor}22`, color: accentColor }
+                        : undefined
+                    }
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+
+              {/* Mock content */}
+              <div className="flex-1 p-4 space-y-3">
+                <div className="text-sm font-semibold">Tablero</div>
+                <div className="flex gap-2">
+                  <button
+                    className="text-xs px-3 py-1.5 rounded-md text-white font-medium"
+                    style={{ backgroundColor: accentColor }}
+                  >
+                    Boton primario
+                  </button>
+                  <button
+                    className={cn(
+                      'text-xs px-3 py-1.5 rounded-md border font-medium',
+                      darkMode === 'dark' ? 'border-zinc-600 text-zinc-300' : 'border-zinc-300 text-zinc-700',
                     )}
                   >
-                    <div className="flex items-center gap-2 mb-4">
-                      <div
-                        className="size-6 rounded"
-                        style={{ backgroundColor: accentColor }}
-                      />
-                      <span className="text-xs font-semibold">
-                        Mi Proyecto
-                      </span>
-                    </div>
-                    {['Tablero', 'Backlog', 'Sprints'].map((item) => (
-                      <div
-                        key={item}
-                        className={cn(
-                          'text-xs px-2 py-1.5 rounded',
-                          item === 'Tablero'
-                            ? 'font-medium'
-                            : darkMode
-                              ? 'text-zinc-400'
-                              : 'text-zinc-500',
-                        )}
-                        style={
-                          item === 'Tablero'
-                            ? {
-                                backgroundColor: `${accentColor}20`,
-                                color: accentColor,
-                              }
-                            : undefined
-                        }
-                      >
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                  {/* Mock content */}
-                  <div className="flex-1 p-4 space-y-3">
-                    <div className="text-sm font-semibold">Tablero</div>
-                    <div className="flex gap-2">
-                      <button
-                        className="text-xs px-3 py-1.5 rounded-md text-white font-medium"
-                        style={{ backgroundColor: accentColor }}
-                      >
-                        Boton primario
-                      </button>
-                      <button
-                        className={cn(
-                          'text-xs px-3 py-1.5 rounded-md border font-medium',
-                          darkMode
-                            ? 'border-zinc-600 text-zinc-300'
-                            : 'border-zinc-300 text-zinc-700',
-                        )}
-                      >
-                        Boton secundario
-                      </button>
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                      {['Por hacer', 'En progreso', 'Hecho'].map(
-                        (col) => (
-                          <div
-                            key={col}
-                            className={cn(
-                              'flex-1 rounded-md border p-2',
-                              darkMode
-                                ? 'border-zinc-700 bg-zinc-800'
-                                : 'border-zinc-200 bg-zinc-50',
-                            )}
-                          >
-                            <div className="text-xs font-medium mb-2">
-                              {col}
-                            </div>
-                            <div
-                              className={cn(
-                                'rounded border p-2',
-                                darkMode
-                                  ? 'border-zinc-600 bg-zinc-700'
-                                  : 'border-zinc-200 bg-white',
-                              )}
-                            >
-                              <div className="text-xs">Tarea ejemplo</div>
-                            </div>
-                          </div>
-                        ),
+                    Secundario
+                  </button>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  {['Por hacer', 'En progreso', 'Hecho'].map((col) => (
+                    <div
+                      key={col}
+                      className={cn(
+                        'flex-1 rounded-lg border p-2',
+                        darkMode === 'dark' ? 'border-zinc-700 bg-zinc-800' : 'border-zinc-200 bg-zinc-50',
                       )}
+                    >
+                      <div className="text-xs font-medium mb-2">{col}</div>
+                      <div
+                        className={cn(
+                          'rounded border p-2',
+                          darkMode === 'dark' ? 'border-zinc-600 bg-zinc-700' : 'border-zinc-200 bg-white',
+                        )}
+                      >
+                        <div className="text-xs">Tarea ejemplo</div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-        </div>
-
-        {/* ── Fixed save bar ──────────────────────────────────────── */}
-        <div
-          className="fixed bottom-0 right-0 z-20 border-t bg-white/80 backdrop-blur-sm dark:bg-card/80"
-          style={{ left: 'var(--sidebar-width)' }}
-        >
-          <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-3">
-            <p className="text-xs text-muted-foreground">
-              Los cambios no se guardan automaticamente.
-            </p>
-            <Button
-              onClick={handleSave}
-              disabled={updateAppearance.isPending}
-            >
-              {updateAppearance.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Save className="size-4" />
-              )}
-              Guardar cambios
-            </Button>
+            </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Fixed save bar ──────────────────────────────────────────── */}
+      <div
+        className="fixed bottom-0 right-0 z-20 border-t bg-background/90 backdrop-blur-sm"
+        style={{ left: 'var(--sidebar-width, 16rem)' }}
+      >
+        <div className="flex items-center justify-between px-6 py-3">
+          <p className="text-xs text-muted-foreground">
+            Los cambios se aplican para todos los miembros al guardar.
+          </p>
+          <Button onClick={handleSave} disabled={updateAppearance.isPending}>
+            {updateAppearance.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Save className="size-4" />
+            )}
+            Guardar cambios
+          </Button>
         </div>
+      </div>
     </div>
   );
 }

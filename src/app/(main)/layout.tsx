@@ -9,6 +9,7 @@ import { ProfileSidebar } from "@/shared/components/layout/profile-sidebar";
 import { ProjectSettingsSidebar } from "@/modules/projects/components/project-settings-sidebar";
 import { ProjectSidebar } from "@/modules/projects/components/project-sidebar";
 import { SiteHeader } from "@/shared/components/layout/site-header";
+import { OrgThemeApplier } from "@/shared/components/layout/org-theme-applier";
 import { useAuthStore } from "@/shared/stores/auth.store";
 import { useAuth } from "@/shared/hooks/use-auth";
 
@@ -74,6 +75,7 @@ export default function MainLayout({
         <AppSidebar />
       )}
       <SidebarInset className="min-w-0 overflow-x-clip">
+        <OrgThemeApplier />
         <SiteHeader />
         <main className="flex-1 min-w-0 p-4 md:p-6">{children}</main>
       </SidebarInset>

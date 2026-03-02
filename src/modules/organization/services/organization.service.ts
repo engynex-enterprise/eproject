@@ -43,9 +43,11 @@ export interface UpdateRoleData {
 
 export interface AppearanceConfig {
   logoUrl: string | null;
+  logoDarkUrl: string | null;
   faviconUrl: string | null;
-  accentColor: string;
-  fontFamily: string;
+  accentColor: string | null;
+  primaryColor: string | null;
+  fontFamily: string | null;
   darkMode: boolean;
 }
 

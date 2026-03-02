@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, Loader2, Lock, CheckCircle2, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, CheckCircle2, ShieldCheck, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,15 +26,15 @@ function useChangePassword() {
 function getStrength(pw: string): { level: number; label: string; color: string } {
   if (!pw) return { level: 0, label: "", color: "" };
   let score = 0;
-  if (pw.length >= 8)  score++;
-  if (/[A-Z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
+  if (pw.length >= 8)        score++;
+  if (/[A-Z]/.test(pw))     score++;
+  if (/[0-9]/.test(pw))     score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;
   const map = [
-    { level: 1, label: "Muy debil",  color: "bg-red-500"    },
-    { level: 2, label: "Debil",      color: "bg-orange-500" },
-    { level: 3, label: "Buena",      color: "bg-yellow-500" },
-    { level: 4, label: "Excelente",  color: "bg-emerald-500"},
+    { level: 1, label: "Muy debil",  color: "bg-red-500"     },
+    { level: 2, label: "Debil",      color: "bg-orange-500"  },
+    { level: 3, label: "Buena",      color: "bg-yellow-500"  },
+    { level: 4, label: "Excelente",  color: "bg-emerald-500" },
   ];
   return map[Math.min(score, 4) - 1] ?? { level: 0, label: "", color: "" };
 }
@@ -71,16 +71,16 @@ function PasswordInput({
 
 export default function ProfileSecurityPage() {
   const changePassword = useChangePassword();
-  const [current, setCurrent]   = useState("");
-  const [newPw, setNewPw]       = useState("");
-  const [confirm, setConfirm]   = useState("");
-  const [error, setError]       = useState("");
-  const [success, setSuccess]   = useState(false);
+  const [current, setCurrent] = useState("");
+  const [newPw,   setNewPw]   = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error,   setError]   = useState("");
+  const [success, setSuccess] = useState(false);
 
   const strength = getStrength(newPw);
-  const match = newPw && confirm ? newPw === confirm : null;
+  const match    = newPw && confirm ? newPw === confirm : null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: { preventDefault(): void }) => {
     e.preventDefault();
     setError("");
     setSuccess(false);
@@ -93,33 +93,51 @@ export default function ProfileSecurityPage() {
           setCurrent(""); setNewPw(""); setConfirm(""); setSuccess(true);
           setTimeout(() => setSuccess(false), 4000);
         },
-        onError: (err) => setError(err instanceof Error ? err.message : "Error al cambiar la contrasena."),
+        onError: (err) =>
+          setError(err instanceof Error ? err.message : "Error al cambiar la contrasena."),
       },
     );
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
+    <div className="flex flex-1 flex-col gap-6 pb-20">
 
-      {/* Info card */}
-      <div className="flex items-start gap-4 rounded-2xl border border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30 px-5 py-4">
+      {/* ── Page header ─────────────────────────────────────────── */}
+      <div className="border-b pb-4">
+        <h1 className="text-2xl font-bold tracking-tight">Seguridad</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Administra tu contrasena y ajustes de acceso.
+        </p>
+      </div>
+
+      {/* ── Info banner ─────────────────────────────────────────── */}
+      <div className="flex items-start gap-4 rounded-2xl border border-blue-200 bg-blue-50/60 dark:border-blue-900 dark:bg-blue-950/30 px-5 py-4">
         <ShieldCheck className="mt-0.5 size-5 text-blue-600 dark:text-blue-400 shrink-0" />
         <div>
-          <p className="text-sm font-medium text-blue-900 dark:text-blue-300">Contrasena segura</p>
+          <p className="text-sm font-semibold text-blue-900 dark:text-blue-300">Contrasena segura</p>
           <p className="text-xs text-blue-700/80 dark:text-blue-400/80 mt-0.5">
-            Usa al menos 8 caracteres combinando mayusculas, numeros y simbolos.
+            Usa al menos 8 caracteres combinando mayusculas, numeros y simbolos especiales.
           </p>
         </div>
       </div>
 
-      {/* Form card */}
-      <form onSubmit={handleSubmit} className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+      {/* ── Password form ────────────────────────────────────────── */}
+      <form
+        onSubmit={handleSubmit}
+        className="rounded-2xl border bg-card shadow-sm overflow-hidden"
+      >
         <div className="px-6 py-5 border-b">
-          <p className="text-sm font-semibold">Cambiar contrasena</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Actualiza tu contrasena de acceso.</p>
+          <p className="text-sm font-semibold flex items-center gap-2">
+            <Lock className="size-4" />
+            Cambiar contrasena
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Actualiza tu contrasena de acceso a la plataforma.
+          </p>
         </div>
 
         <div className="px-6 py-6 space-y-5">
+          {/* Current password */}
           <div className="space-y-1.5 max-w-sm">
             <Label htmlFor="current" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Contrasena actual
@@ -133,7 +151,10 @@ export default function ProfileSecurityPage() {
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 max-w-lg">
+          <div className="h-px bg-border" />
+
+          {/* New passwords */}
+          <div className="grid gap-5 sm:grid-cols-2 max-w-lg">
             <div className="space-y-1.5">
               <Label htmlFor="new-pw" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Nueva contrasena
@@ -177,7 +198,9 @@ export default function ProfileSecurityPage() {
                   placeholder="Repetir contrasena"
                   required
                   className={cn(
-                    confirm && (match ? "border-emerald-500 focus-visible:ring-emerald-500" : "border-red-400 focus-visible:ring-red-400"),
+                    confirm && (match
+                      ? "border-emerald-500 focus-visible:ring-emerald-500"
+                      : "border-red-400 focus-visible:ring-red-400"),
                   )}
                 />
                 {match === true && (
@@ -192,22 +215,23 @@ export default function ProfileSecurityPage() {
           )}
         </div>
 
+        {/* Footer with save */}
         <div className="px-6 py-4 bg-muted/30 border-t flex items-center justify-between">
-          {success && (
+          {success ? (
             <span className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
               <CheckCircle2 className="size-4" /> Contrasena actualizada
             </span>
+          ) : (
+            <span />
           )}
-          <div className="ml-auto">
-            <Button type="submit" size="sm" disabled={changePassword.isPending}>
-              {changePassword.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Lock className="size-3.5" />
-              )}
-              Actualizar contrasena
-            </Button>
-          </div>
+          <Button type="submit" disabled={changePassword.isPending}>
+            {changePassword.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Save className="size-4" />
+            )}
+            Actualizar contrasena
+          </Button>
         </div>
       </form>
     </div>
