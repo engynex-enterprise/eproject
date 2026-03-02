@@ -1,17 +1,7 @@
 "use client";
 
-import {
-  LogOut,
-  User,
-  Building2,
-  ChevronsUpDown,
-  Settings,
-} from "lucide-react";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
+import { LogOut, User, Building2, ChevronsUpDown } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,13 +29,9 @@ export function NavUser() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
-  const displayName = user
-    ? `${user.firstName} ${user.lastName}`
-    : "Usuario";
+  const displayName = user ? `${user.firstName} ${user.lastName}` : "Usuario";
   const email = user?.email || "";
-  const initials = user
-    ? getInitials(user.firstName, user.lastName)
-    : "U";
+  const initials = user ? getInitials(user.firstName, user.lastName) : "U";
 
   async function handleLogout() {
     await logout();
@@ -111,10 +97,6 @@ export function NavUser() {
               <DropdownMenuItem onClick={() => router.push("/organization")}>
                 <Building2 className="mr-2 h-4 w-4" />
                 Organizacion
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push("/settings")}>
-                <Settings className="mr-2 h-4 w-4" />
-                Configuracion
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
