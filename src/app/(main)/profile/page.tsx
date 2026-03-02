@@ -97,7 +97,9 @@ export default function ProfilePage() {
           <div className="relative shrink-0">
             <Avatar className="size-20 ring-4 ring-background shadow-md">
               <AvatarFallback className="text-xl font-semibold bg-primary/10 text-primary">
-                {profile ? getInitials(profile.firstName, profile.lastName) : "?"}
+                {profile
+                  ? getInitials(profile.firstName, profile.lastName)
+                  : "?"}
               </AvatarFallback>
             </Avatar>
             <button
@@ -111,7 +113,9 @@ export default function ProfilePage() {
             <p className="font-semibold text-base leading-tight">
               {profile ? `${profile.firstName} ${profile.lastName}` : "—"}
             </p>
-            <p className="text-sm text-muted-foreground">{profile?.email ?? ""}</p>
+            <p className="text-sm text-muted-foreground">
+              {profile?.email ?? ""}
+            </p>
             <Badge variant="secondary" className="mt-1.5 text-xs">
               {(profile as UserType & { role?: string })?.role ?? "Miembro"}
             </Badge>
@@ -132,7 +136,10 @@ export default function ProfilePage() {
           <div className="px-6 py-6 space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="first-name" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                <Label
+                  htmlFor="first-name"
+                  className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+                >
                   Nombre
                 </Label>
                 <div className="relative">
@@ -148,7 +155,10 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="last-name" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                <Label
+                  htmlFor="last-name"
+                  className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+                >
                   Apellido
                 </Label>
                 <div className="relative">
@@ -167,7 +177,10 @@ export default function ProfilePage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                <Label
+                  htmlFor="email"
+                  className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+                >
                   Correo electronico
                 </Label>
                 <div className="relative">
@@ -179,10 +192,15 @@ export default function ProfilePage() {
                     className="pl-9 bg-muted text-muted-foreground"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">El correo no se puede cambiar.</p>
+                <p className="text-xs text-muted-foreground">
+                  El correo no se puede cambiar.
+                </p>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="phone" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                <Label
+                  htmlFor="phone"
+                  className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+                >
                   Telefono
                 </Label>
                 <div className="relative">
