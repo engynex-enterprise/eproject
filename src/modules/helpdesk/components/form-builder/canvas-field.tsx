@@ -24,6 +24,7 @@ import {
   Globe,
   Database,
   FileText,
+  Braces,
 } from 'lucide-react';
 import type { FormField, FieldType } from '../../types/form-config';
 import { Button } from '@/components/ui/button';
@@ -159,7 +160,13 @@ export function CanvasField({
           {field.dataSource?.type === 'api' && (
             <Badge variant="outline" className="text-[10px] font-normal gap-0.5">
               <Globe className="size-2.5 text-blue-500" />
-              API
+              REST
+            </Badge>
+          )}
+          {field.dataSource?.type === 'graphql' && (
+            <Badge variant="outline" className="text-[10px] font-normal gap-0.5">
+              <Braces className="size-2.5 text-pink-500" />
+              GraphQL
             </Badge>
           )}
           {field.dataSource?.type === 'database' && (
@@ -219,7 +226,18 @@ function FieldPreview({ field }: { field: FormField }) {
           <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Globe className="size-3 text-blue-500" />
-              Opciones desde API
+              Opciones desde API REST
+            </span>
+            <ChevronDown className="size-3" />
+          </div>
+        );
+      }
+      if (field.dataSource?.type === 'graphql') {
+        return (
+          <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <Braces className="size-3 text-pink-500" />
+              Opciones desde GraphQL
             </span>
             <ChevronDown className="size-3" />
           </div>

@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
-import { useApiOptions } from '../hooks/use-api-options';
+import { useApiOptions, type FetchableConfig } from '../hooks/use-api-options';
 import {
   Card,
   CardContent,
@@ -428,8 +428,8 @@ function DynamicField({
     case 'select': {
       const dsType = field.dataSource?.type ?? 'manual';
 
-      // API data source — delegate to wrapper with hook
-      if (!field.dependsOn && dsType === 'api') {
+      // API/GraphQL data source — delegate to wrapper with hook
+      if (!field.dependsOn && (dsType === 'api' || dsType === 'graphql')) {
         return (
           <ApiSelectField
             field={field}
@@ -536,7 +536,7 @@ function DynamicField({
     case 'radio': {
       const dsType = field.dataSource?.type ?? 'manual';
 
-      if (dsType === 'api') {
+      if (dsType === 'api' || dsType === 'graphql') {
         return (
           <ApiRadioField
             field={field}
@@ -703,6 +703,17 @@ interface ApiFieldProps {
   wrapperClass: string;
 }
 
+function buildFetchableConfig(field: { dataSource?: import('../types/form-config').DataSourceConfig }): FetchableConfig | undefined {
+  const ds = field.dataSource;
+  if (ds?.type === 'graphql' && ds.graphqlConfig) {
+    return { type: 'graphql', config: ds.graphqlConfig };
+  }
+  if (ds?.type === 'api' && ds.apiConfig) {
+    return { type: 'api', config: ds.apiConfig };
+  }
+  return undefined;
+}
+
 function ApiSelectField({
   field,
   value,
@@ -712,7 +723,7 @@ function ApiSelectField({
   wrapperClass,
 }: ApiFieldProps) {
   const { options, isLoading, error: fetchError, refetch } = useApiOptions(
-    field.dataSource?.apiConfig,
+    buildFetchableConfig(field),
   );
 
   const fieldLabel = (
@@ -800,7 +811,7 @@ function ApiRadioField({
   wrapperClass,
 }: ApiFieldProps) {
   const { options, isLoading, error: fetchError, refetch } = useApiOptions(
-    field.dataSource?.apiConfig,
+    buildFetchableConfig(field),
   );
 
   const fieldLabel = (

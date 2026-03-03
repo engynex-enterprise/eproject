@@ -17,7 +17,7 @@ export type FieldType =
 
 // ─── Data Source Types ───────────────────────────────────────────────────────
 
-export type DataSourceType = 'manual' | 'bulk' | 'api' | 'database';
+export type DataSourceType = 'manual' | 'bulk' | 'api' | 'graphql' | 'database';
 
 export interface ApiDataSourceConfig {
   url: string;
@@ -36,6 +36,25 @@ export interface ApiDataSourceConfig {
   cacheTtl?: number;
 }
 
+export interface GraphqlDataSourceConfig {
+  /** GraphQL endpoint URL */
+  url: string;
+  /** GraphQL query string */
+  query: string;
+  /** Optional variables object as JSON string */
+  variables?: string;
+  /** JSON path to the array in the response (e.g. "data.users") */
+  responsePath: string;
+  /** Key in each item to use as option value */
+  valueKey: string;
+  /** Key in each item to use as display label */
+  labelKey: string;
+  /** Optional static headers (e.g. Authorization) */
+  headers?: Record<string, string>;
+  /** Cache TTL in seconds (default 300) */
+  cacheTtl?: number;
+}
+
 export interface DatabaseDataSourceConfig {
   connectionString: string;
   query: string;
@@ -46,6 +65,7 @@ export interface DatabaseDataSourceConfig {
 export interface DataSourceConfig {
   type: DataSourceType;
   apiConfig?: ApiDataSourceConfig;
+  graphqlConfig?: GraphqlDataSourceConfig;
   databaseConfig?: DatabaseDataSourceConfig;
   /** Raw text for bulk mode (so user can re-edit it) */
   bulkText?: string;
