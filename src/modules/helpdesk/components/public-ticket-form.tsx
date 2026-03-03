@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { useApiOptions } from '../hooks/use-api-options';
 import {
   Card,
   CardContent,
@@ -425,6 +426,36 @@ function DynamicField({
       );
 
     case 'select': {
+      const dsType = field.dataSource?.type ?? 'manual';
+
+      // API data source — delegate to wrapper with hook
+      if (!field.dependsOn && dsType === 'api') {
+        return (
+          <ApiSelectField
+            field={field}
+            value={value}
+            onChange={onChange}
+            onBlur={onBlur}
+            error={error}
+            wrapperClass={wrapperClass}
+          />
+        );
+      }
+
+      // Database — not yet functional
+      if (!field.dependsOn && dsType === 'database') {
+        return (
+          <div className={`space-y-2 ${wrapperClass}`}>
+            {label}
+            <div className="rounded-md border border-dashed bg-muted/30 px-3 py-3 text-xs text-muted-foreground text-center">
+              Origen de datos no disponible
+            </div>
+            {helperText}
+          </div>
+        );
+      }
+
+      // Manual / Bulk / Dependent — resolve from field.options or conditionalOptions
       let resolvedOptions: string[] = [];
       let isDisabled = false;
       let disabledMessage = '';
@@ -502,7 +533,34 @@ function DynamicField({
       );
     }
 
-    case 'radio':
+    case 'radio': {
+      const dsType = field.dataSource?.type ?? 'manual';
+
+      if (dsType === 'api') {
+        return (
+          <ApiRadioField
+            field={field}
+            value={value}
+            onChange={onChange}
+            onBlur={onBlur}
+            error={error}
+            wrapperClass={wrapperClass}
+          />
+        );
+      }
+
+      if (dsType === 'database') {
+        return (
+          <div className={`space-y-2 ${wrapperClass}`}>
+            {label}
+            <div className="rounded-md border border-dashed bg-muted/30 px-3 py-3 text-xs text-muted-foreground text-center">
+              Origen de datos no disponible
+            </div>
+            {helperText}
+          </div>
+        );
+      }
+
       return (
         <div className={`space-y-2 ${wrapperClass}`}>
           {label}
@@ -526,6 +584,7 @@ function DynamicField({
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
       );
+    }
 
     case 'checkbox':
       return (
@@ -631,4 +690,177 @@ function DynamicField({
         </div>
       );
   }
+}
+
+// ─── API Data Source Wrappers ────────────────────────────────────────────────
+
+interface ApiFieldProps {
+  field: FormField;
+  value: string;
+  onChange: (value: string) => void;
+  onBlur: () => void;
+  error: string;
+  wrapperClass: string;
+}
+
+function ApiSelectField({
+  field,
+  value,
+  onChange,
+  onBlur,
+  error,
+  wrapperClass,
+}: ApiFieldProps) {
+  const { options, isLoading, error: fetchError, refetch } = useApiOptions(
+    field.dataSource?.apiConfig,
+  );
+
+  const fieldLabel = (
+    <Label>
+      {field.label}{' '}
+      {field.required && <span className="text-destructive">*</span>}
+    </Label>
+  );
+
+  const helperText = field.helperText ? (
+    <p className="text-[11px] text-muted-foreground">{field.helperText}</p>
+  ) : null;
+
+  if (isLoading) {
+    return (
+      <div className={`space-y-2 ${wrapperClass}`}>
+        {fieldLabel}
+        <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
+          <Loader2 className="size-3 animate-spin" />
+          Cargando opciones...
+        </div>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className={`space-y-2 ${wrapperClass}`}>
+        {fieldLabel}
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-xs text-destructive flex items-center justify-between">
+          <span>Error al cargar opciones</span>
+          <button onClick={refetch} className="underline text-[11px]">
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (field.searchable) {
+    return (
+      <div className={`space-y-2 ${wrapperClass}`}>
+        {fieldLabel}
+        <SearchableSelect
+          value={value}
+          onValueChange={onChange}
+          options={options.map((opt) => ({ value: opt.value, label: opt.label }))}
+          placeholder={field.placeholder || 'Selecciona...'}
+          searchPlaceholder="Buscar..."
+          emptyMessage="Sin resultados."
+        />
+        {helperText}
+        {error && <p className="text-xs text-destructive">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`space-y-2 ${wrapperClass}`}>
+      {fieldLabel}
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger>
+          <SelectValue placeholder={field.placeholder || 'Selecciona...'} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {helperText}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+function ApiRadioField({
+  field,
+  value,
+  onChange,
+  onBlur,
+  error,
+  wrapperClass,
+}: ApiFieldProps) {
+  const { options, isLoading, error: fetchError, refetch } = useApiOptions(
+    field.dataSource?.apiConfig,
+  );
+
+  const fieldLabel = (
+    <Label>
+      {field.label}{' '}
+      {field.required && <span className="text-destructive">*</span>}
+    </Label>
+  );
+
+  const helperText = field.helperText ? (
+    <p className="text-[11px] text-muted-foreground">{field.helperText}</p>
+  ) : null;
+
+  if (isLoading) {
+    return (
+      <div className={`space-y-2 ${wrapperClass}`}>
+        {fieldLabel}
+        <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
+          <Loader2 className="size-3 animate-spin" />
+          Cargando opciones...
+        </div>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className={`space-y-2 ${wrapperClass}`}>
+        {fieldLabel}
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-xs text-destructive flex items-center justify-between">
+          <span>Error al cargar opciones</span>
+          <button onClick={refetch} className="underline text-[11px]">
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`space-y-2 ${wrapperClass}`}>
+      {fieldLabel}
+      <div className="space-y-2">
+        {options.map((opt) => (
+          <label key={opt.value} className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name={field.id}
+              value={opt.value}
+              checked={value === opt.value}
+              onChange={() => onChange(opt.value)}
+              onBlur={onBlur}
+              className="size-4 accent-primary"
+            />
+            <span className="text-sm">{opt.label}</span>
+          </label>
+        ))}
+      </div>
+      {helperText}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
 }

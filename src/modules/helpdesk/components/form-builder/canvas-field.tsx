@@ -21,6 +21,9 @@ import {
   CircleDot,
   Heading,
   Search,
+  Globe,
+  Database,
+  FileText,
 } from 'lucide-react';
 import type { FormField, FieldType } from '../../types/form-config';
 import { Button } from '@/components/ui/button';
@@ -153,6 +156,24 @@ export function CanvasField({
               <Search className="size-2.5" />
             </Badge>
           )}
+          {field.dataSource?.type === 'api' && (
+            <Badge variant="outline" className="text-[10px] font-normal gap-0.5">
+              <Globe className="size-2.5 text-blue-500" />
+              API
+            </Badge>
+          )}
+          {field.dataSource?.type === 'database' && (
+            <Badge variant="outline" className="text-[10px] font-normal gap-0.5">
+              <Database className="size-2.5 text-amber-500" />
+              DB
+            </Badge>
+          )}
+          {field.dataSource?.type === 'bulk' && (
+            <Badge variant="outline" className="text-[10px] font-normal gap-0.5">
+              <FileText className="size-2.5" />
+              Masivo
+            </Badge>
+          )}
           {parentFieldLabel && (
             <Badge variant="outline" className="text-[10px] font-normal gap-0.5">
               <Link2 className="size-2.5" />
@@ -193,6 +214,28 @@ function FieldPreview({ field }: { field: FormField }) {
         </div>
       );
     case 'select':
+      if (field.dataSource?.type === 'api') {
+        return (
+          <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <Globe className="size-3 text-blue-500" />
+              Opciones desde API
+            </span>
+            <ChevronDown className="size-3" />
+          </div>
+        );
+      }
+      if (field.dataSource?.type === 'database') {
+        return (
+          <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <Database className="size-3 text-amber-500" />
+              Base de datos (proximamente)
+            </span>
+            <ChevronDown className="size-3" />
+          </div>
+        );
+      }
       return (
         <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           <span>{field.placeholder || 'Selecciona...'}</span>

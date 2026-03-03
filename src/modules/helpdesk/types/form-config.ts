@@ -15,6 +15,44 @@ export type FieldType =
   | 'radio'
   | 'heading';
 
+// ─── Data Source Types ───────────────────────────────────────────────────────
+
+export type DataSourceType = 'manual' | 'bulk' | 'api' | 'database';
+
+export interface ApiDataSourceConfig {
+  url: string;
+  method: 'GET' | 'POST';
+  /** JSON path to the array in the response (e.g. "data.items") */
+  responsePath: string;
+  /** Key in each item to use as option value */
+  valueKey: string;
+  /** Key in each item to use as display label */
+  labelKey: string;
+  /** Optional static headers */
+  headers?: Record<string, string>;
+  /** Optional request body (for POST) */
+  body?: string;
+  /** Cache TTL in seconds (default 300) */
+  cacheTtl?: number;
+}
+
+export interface DatabaseDataSourceConfig {
+  connectionString: string;
+  query: string;
+  valueColumn: string;
+  labelColumn: string;
+}
+
+export interface DataSourceConfig {
+  type: DataSourceType;
+  apiConfig?: ApiDataSourceConfig;
+  databaseConfig?: DatabaseDataSourceConfig;
+  /** Raw text for bulk mode (so user can re-edit it) */
+  bulkText?: string;
+}
+
+// ─── Form Field ─────────────────────────────────────────────────────────────
+
 export interface FormField {
   id: string;
   type: FieldType;
@@ -43,6 +81,8 @@ export interface FormField {
   multiple?: boolean;
   /** Heading description (for heading type) */
   headingDescription?: string;
+  /** Data source configuration for select/radio fields */
+  dataSource?: DataSourceConfig;
 }
 
 export interface FormConfig {

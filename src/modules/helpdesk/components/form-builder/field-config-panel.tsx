@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { DataSourceEditor } from './data-source-editor';
 
 interface FieldConfigPanelProps {
   field: FormField | null;
@@ -368,14 +369,19 @@ export function FieldConfigPanel({ field, allFields, onUpdate }: FieldConfigPane
           </>
         )}
 
-        {/* Options for select/radio (only when NOT dependent) */}
+        {/* Data source + options for select/radio (only when NOT dependent) */}
         {hasOptions && !field.dependsOn && (
           <>
             <Separator />
-            <OptionsEditor
-              options={field.options ?? []}
-              onChange={(options) => onUpdate(field.id, { options })}
-            />
+            <DataSourceEditor field={field} onUpdate={onUpdate} />
+
+            {/* Manual OptionsEditor only when data source is manual or absent */}
+            {(!field.dataSource || field.dataSource.type === 'manual') && (
+              <OptionsEditor
+                options={field.options ?? []}
+                onChange={(options) => onUpdate(field.id, { options })}
+              />
+            )}
           </>
         )}
 
