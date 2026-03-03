@@ -40,6 +40,8 @@ import {
 interface DataSourceEditorProps {
   field: FormField;
   onUpdate: (fieldId: string, updates: Partial<FormField>) => void;
+  /** When set, the field depends on a parent — show {{parent}} hints */
+  parentFieldLabel?: string;
 }
 
 const DS_OPTIONS: { value: DataSourceType; label: string; icon: React.ElementType }[] = [
@@ -50,7 +52,7 @@ const DS_OPTIONS: { value: DataSourceType; label: string; icon: React.ElementTyp
   { value: 'database', label: 'Base de datos', icon: Database },
 ];
 
-export function DataSourceEditor({ field, onUpdate }: DataSourceEditorProps) {
+export function DataSourceEditor({ field, onUpdate, parentFieldLabel }: DataSourceEditorProps) {
   const currentType: DataSourceType = field.dataSource?.type ?? 'manual';
 
   const handleTypeChange = (newType: DataSourceType) => {
@@ -148,13 +150,13 @@ export function DataSourceEditor({ field, onUpdate }: DataSourceEditorProps) {
         <BulkTextEditor field={field} onUpdate={onUpdate} />
       )}
       {currentType === 'api' && (
-        <ApiConfigEditor field={field} onUpdate={onUpdate} />
+        <ApiConfigEditor field={field} onUpdate={onUpdate} parentFieldLabel={parentFieldLabel} />
       )}
       {currentType === 'graphql' && (
-        <GraphqlConfigEditor field={field} onUpdate={onUpdate} />
+        <GraphqlConfigEditor field={field} onUpdate={onUpdate} parentFieldLabel={parentFieldLabel} />
       )}
       {currentType === 'database' && (
-        <DatabaseConfigEditor field={field} onUpdate={onUpdate} />
+        <DatabaseConfigEditor field={field} onUpdate={onUpdate} parentFieldLabel={parentFieldLabel} />
       )}
     </div>
   );
@@ -211,9 +213,11 @@ function BulkTextEditor({
 function ApiConfigEditor({
   field,
   onUpdate,
+  parentFieldLabel,
 }: {
   field: FormField;
   onUpdate: (fieldId: string, updates: Partial<FormField>) => void;
+  parentFieldLabel?: string;
 }) {
   const config: ApiDataSourceConfig = field.dataSource?.apiConfig ?? {
     url: '',
@@ -235,6 +239,7 @@ function ApiConfigEditor({
   const [showHeaders, setShowHeaders] = useState(
     () => Object.keys(config.headers ?? {}).length > 0,
   );
+  const [testParentValue, setTestParentValue] = useState('');
 
   const updateConfig = (patch: Partial<ApiDataSourceConfig>) => {
     onUpdate(field.id, {
@@ -251,17 +256,28 @@ function ApiConfigEditor({
     setTesting(true);
     setTestResult(null);
     try {
+      // Resolve {{parent}} with test value if provided
+      const pv = testParentValue.trim();
+      const resolveUrl = (s: string) => pv ? s.replace(/\{\{parent\}\}/g, encodeURIComponent(pv)) : s;
+      const resolveRaw = (s: string) => pv ? s.replace(/\{\{parent\}\}/g, pv) : s;
+
+      const resolvedUrl = resolveUrl(config.url);
+      const resolvedBody = config.body ? resolveRaw(config.body) : config.body;
+      const resolvedHeaders = config.headers
+        ? Object.fromEntries(Object.entries(config.headers).map(([k, v]) => [k, resolveRaw(v)]))
+        : config.headers;
+
       const fetchOpts: RequestInit = {
         method: config.method,
         headers: {
           'Content-Type': 'application/json',
-          ...(config.headers ?? {}),
+          ...(resolvedHeaders ?? {}),
         },
       };
-      if (config.method === 'POST' && config.body) {
-        fetchOpts.body = config.body;
+      if (config.method === 'POST' && resolvedBody) {
+        fetchOpts.body = resolvedBody;
       }
-      const res = await fetch(config.url, fetchOpts);
+      const res = await fetch(resolvedUrl, fetchOpts);
       if (!res.ok) {
         const errorBody = await res.text().catch(() => '');
         throw new Error(`HTTP ${res.status}${errorBody ? `: ${errorBody.slice(0, 200)}` : ''}`);
@@ -380,9 +396,15 @@ function ApiConfigEditor({
         <Input
           value={config.url}
           onChange={(e) => updateConfig({ url: e.target.value })}
-          placeholder="https://api.ejemplo.com/opciones"
+          placeholder={parentFieldLabel ? 'https://api.com/items?parent={{parent}}' : 'https://api.ejemplo.com/opciones'}
           className="h-8 text-sm font-mono"
         />
+        {parentFieldLabel && (
+          <p className="text-[10px] text-blue-600 dark:text-blue-400">
+            Usa <code className="font-mono bg-blue-50 dark:bg-blue-900/40 px-1 rounded">{'{{parent}}'}</code> para
+            insertar el valor de &quot;{parentFieldLabel}&quot;
+          </p>
+        )}
       </div>
 
       {/* Method */}
@@ -531,6 +553,22 @@ function ApiConfigEditor({
 
       <Separator />
 
+      {/* Test parent value input */}
+      {parentFieldLabel && (
+        <div className="space-y-1.5">
+          <Label className="text-xs">Valor de prueba para &quot;{parentFieldLabel}&quot;</Label>
+          <Input
+            value={testParentValue}
+            onChange={(e) => setTestParentValue(e.target.value)}
+            placeholder="Ej: España, US, 123..."
+            className="h-7 text-xs"
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Se usara en lugar de {'{{parent}}'} al probar la conexion
+          </p>
+        </div>
+      )}
+
       {/* Test button */}
       <Button
         type="button"
@@ -636,9 +674,11 @@ function ApiConfigEditor({
 function GraphqlConfigEditor({
   field,
   onUpdate,
+  parentFieldLabel,
 }: {
   field: FormField;
   onUpdate: (fieldId: string, updates: Partial<FormField>) => void;
+  parentFieldLabel?: string;
 }) {
   const config: GraphqlDataSourceConfig = field.dataSource?.graphqlConfig ?? {
     url: '',
@@ -663,6 +703,7 @@ function GraphqlConfigEditor({
   const [showVariables, setShowVariables] = useState(
     () => !!config.variables,
   );
+  const [testParentValue, setTestParentValue] = useState('');
 
   const updateConfig = (patch: Partial<GraphqlDataSourceConfig>) => {
     onUpdate(field.id, {
@@ -679,11 +720,22 @@ function GraphqlConfigEditor({
     setTesting(true);
     setTestResult(null);
     try {
+      // Resolve {{parent}} with test value if provided
+      const pv = testParentValue.trim();
+      const resolveRaw = (s: string) => pv ? s.replace(/\{\{parent\}\}/g, pv) : s;
+      const resolveUrl = (s: string) => pv ? s.replace(/\{\{parent\}\}/g, encodeURIComponent(pv)) : s;
+
+      const resolvedQuery = resolveRaw(config.query);
+      const resolvedVariables = config.variables ? resolveRaw(config.variables) : config.variables;
+      const resolvedHeaders = config.headers
+        ? Object.fromEntries(Object.entries(config.headers).map(([k, v]) => [k, resolveRaw(v)]))
+        : config.headers;
+
       // Build the GraphQL JSON body automatically
-      const gqlBody: Record<string, unknown> = { query: config.query };
-      if (config.variables) {
+      const gqlBody: Record<string, unknown> = { query: resolvedQuery };
+      if (resolvedVariables) {
         try {
-          gqlBody.variables = JSON.parse(config.variables);
+          gqlBody.variables = JSON.parse(resolvedVariables);
         } catch {
           setTestResult({
             ok: false,
@@ -694,11 +746,11 @@ function GraphqlConfigEditor({
         }
       }
 
-      const res = await fetch(config.url, {
+      const res = await fetch(resolveUrl(config.url), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(config.headers ?? {}),
+          ...(resolvedHeaders ?? {}),
         },
         body: JSON.stringify(gqlBody),
       });
@@ -834,6 +886,12 @@ function GraphqlConfigEditor({
         <p className="text-[10px] text-muted-foreground">
           Se enviara automaticamente como JSON: {'{"query": "...", "variables": {...}'}
         </p>
+        {parentFieldLabel && (
+          <p className="text-[10px] text-blue-600 dark:text-blue-400">
+            Usa <code className="font-mono bg-blue-50 dark:bg-blue-900/40 px-1 rounded">{'{{parent}}'}</code> en
+            la query o en variables para filtrar por &quot;{parentFieldLabel}&quot;
+          </p>
+        )}
       </div>
 
       {/* Variables (collapsible) */}
@@ -979,6 +1037,22 @@ function GraphqlConfigEditor({
 
       <Separator />
 
+      {/* Test parent value input */}
+      {parentFieldLabel && (
+        <div className="space-y-1.5">
+          <Label className="text-xs">Valor de prueba para &quot;{parentFieldLabel}&quot;</Label>
+          <Input
+            value={testParentValue}
+            onChange={(e) => setTestParentValue(e.target.value)}
+            placeholder="Ej: España, US, 123..."
+            className="h-7 text-xs"
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Se usara en lugar de {'{{parent}}'} al probar la conexion
+          </p>
+        </div>
+      )}
+
       {/* Test button */}
       <Button
         type="button"
@@ -1083,9 +1157,11 @@ function GraphqlConfigEditor({
 function DatabaseConfigEditor({
   field,
   onUpdate,
+  parentFieldLabel,
 }: {
   field: FormField;
   onUpdate: (fieldId: string, updates: Partial<FormField>) => void;
+  parentFieldLabel?: string;
 }) {
   const config: DatabaseDataSourceConfig = field.dataSource?.databaseConfig ?? {
     connectionString: '',
@@ -1136,10 +1212,19 @@ function DatabaseConfigEditor({
         <Textarea
           value={config.query}
           onChange={(e) => updateConfig({ query: e.target.value })}
-          placeholder="SELECT id, name FROM options WHERE active = true"
+          placeholder={parentFieldLabel
+            ? "SELECT id, name FROM cities WHERE country_id = '{{parent}}'"
+            : "SELECT id, name FROM options WHERE active = true"
+          }
           rows={3}
           className="text-xs font-mono opacity-60"
         />
+        {parentFieldLabel && (
+          <p className="text-[10px] text-blue-600 dark:text-blue-400">
+            Usa <code className="font-mono bg-blue-50 dark:bg-blue-900/40 px-1 rounded">{'{{parent}}'}</code> en
+            la consulta SQL para filtrar por &quot;{parentFieldLabel}&quot;
+          </p>
+        )}
       </div>
 
       {/* Columns */}

@@ -428,8 +428,13 @@ function DynamicField({
     case 'select': {
       const dsType = field.dataSource?.type ?? 'manual';
 
-      // API/GraphQL data source — delegate to wrapper with hook
-      if (!field.dependsOn && (dsType === 'api' || dsType === 'graphql')) {
+      // API/GraphQL data source — delegate to wrapper with hook (works with or without dependsOn)
+      if (dsType === 'api' || dsType === 'graphql') {
+        const parentField = field.dependsOn
+          ? allFields.find((f) => f.id === field.dependsOn)
+          : undefined;
+        const pv = field.dependsOn ? (allFieldValues[field.dependsOn] ?? '') : undefined;
+        const isWaiting = !!field.dependsOn && (!pv || pv.trim() === '');
         return (
           <ApiSelectField
             field={field}
@@ -438,12 +443,15 @@ function DynamicField({
             onBlur={onBlur}
             error={error}
             wrapperClass={wrapperClass}
+            parentValue={pv}
+            isWaitingForParent={isWaiting}
+            parentLabel={parentField?.label}
           />
         );
       }
 
       // Database — not yet functional
-      if (!field.dependsOn && dsType === 'database') {
+      if (dsType === 'database') {
         return (
           <div className={`space-y-2 ${wrapperClass}`}>
             {label}
@@ -537,6 +545,11 @@ function DynamicField({
       const dsType = field.dataSource?.type ?? 'manual';
 
       if (dsType === 'api' || dsType === 'graphql') {
+        const parentField = field.dependsOn
+          ? allFields.find((f) => f.id === field.dependsOn)
+          : undefined;
+        const pv = field.dependsOn ? (allFieldValues[field.dependsOn] ?? '') : undefined;
+        const isWaiting = !!field.dependsOn && (!pv || pv.trim() === '');
         return (
           <ApiRadioField
             field={field}
@@ -545,6 +558,9 @@ function DynamicField({
             onBlur={onBlur}
             error={error}
             wrapperClass={wrapperClass}
+            parentValue={pv}
+            isWaitingForParent={isWaiting}
+            parentLabel={parentField?.label}
           />
         );
       }
@@ -701,6 +717,9 @@ interface ApiFieldProps {
   onBlur: () => void;
   error: string;
   wrapperClass: string;
+  parentValue?: string;
+  isWaitingForParent?: boolean;
+  parentLabel?: string;
 }
 
 function buildFetchableConfig(field: { dataSource?: import('../types/form-config').DataSourceConfig }): FetchableConfig | undefined {
@@ -721,9 +740,14 @@ function ApiSelectField({
   onBlur,
   error,
   wrapperClass,
+  parentValue,
+  isWaitingForParent,
+  parentLabel,
 }: ApiFieldProps) {
   const { options, isLoading, error: fetchError, refetch } = useApiOptions(
     buildFetchableConfig(field),
+    !isWaitingForParent,
+    parentValue,
   );
 
   const fieldLabel = (
@@ -736,6 +760,25 @@ function ApiSelectField({
   const helperText = field.helperText ? (
     <p className="text-[11px] text-muted-foreground">{field.helperText}</p>
   ) : null;
+
+  // Waiting for parent selection
+  if (isWaitingForParent) {
+    const msg = parentLabel
+      ? `Selecciona primero "${parentLabel}"`
+      : 'Selecciona el campo padre primero';
+    return (
+      <div className={`space-y-2 ${wrapperClass}`}>
+        {fieldLabel}
+        <Select disabled>
+          <SelectTrigger>
+            <SelectValue placeholder={msg} />
+          </SelectTrigger>
+          <SelectContent />
+        </Select>
+        {helperText}
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -809,9 +852,14 @@ function ApiRadioField({
   onBlur,
   error,
   wrapperClass,
+  parentValue,
+  isWaitingForParent,
+  parentLabel,
 }: ApiFieldProps) {
   const { options, isLoading, error: fetchError, refetch } = useApiOptions(
     buildFetchableConfig(field),
+    !isWaitingForParent,
+    parentValue,
   );
 
   const fieldLabel = (
@@ -824,6 +872,22 @@ function ApiRadioField({
   const helperText = field.helperText ? (
     <p className="text-[11px] text-muted-foreground">{field.helperText}</p>
   ) : null;
+
+  // Waiting for parent selection
+  if (isWaitingForParent) {
+    const msg = parentLabel
+      ? `Selecciona primero "${parentLabel}"`
+      : 'Selecciona el campo padre primero';
+    return (
+      <div className={`space-y-2 ${wrapperClass}`}>
+        {fieldLabel}
+        <div className="rounded-md border border-dashed bg-muted/30 px-3 py-3 text-xs text-muted-foreground text-center">
+          {msg}
+        </div>
+        {helperText}
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

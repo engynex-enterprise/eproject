@@ -12,6 +12,7 @@ import {
   Search,
   HelpCircle,
   FileText,
+  Info,
 } from 'lucide-react';
 import type { FormField } from '../../types/form-config';
 import { Input } from '@/components/ui/input';
@@ -369,14 +370,18 @@ export function FieldConfigPanel({ field, allFields, onUpdate }: FieldConfigPane
           </>
         )}
 
-        {/* Data source + options for select/radio (only when NOT dependent) */}
-        {hasOptions && !field.dependsOn && (
+        {/* Data source + options for select/radio */}
+        {hasOptions && (
           <>
             <Separator />
-            <DataSourceEditor field={field} onUpdate={onUpdate} />
+            <DataSourceEditor
+              field={field}
+              onUpdate={onUpdate}
+              parentFieldLabel={field.dependsOn ? (parentField?.label ?? 'campo padre') : undefined}
+            />
 
-            {/* Manual OptionsEditor only when data source is manual or absent */}
-            {(!field.dataSource || field.dataSource.type === 'manual') && (
+            {/* Manual OptionsEditor only when data source is manual/absent AND not dependent */}
+            {(!field.dataSource || field.dataSource.type === 'manual') && !field.dependsOn && (
               <OptionsEditor
                 options={field.options ?? []}
                 onChange={(options) => onUpdate(field.id, { options })}
@@ -417,25 +422,37 @@ function DependencyConfig({
 }) {
   const handleParentChange = (parentId: string) => {
     if (parentId === '__none__') {
-      // Remove dependency — restore to independent select
+      // Remove dependency
       onUpdate(field.id, {
         dependsOn: undefined,
         conditionalOptions: undefined,
-        options: field.options ?? [],
       });
     } else {
       const parent = availableParents.find((f) => f.id === parentId);
       if (!parent) return;
-      // Set dependency — initialize conditional options from parent's options
-      const initialConditional: Record<string, string[]> = {};
-      (parent.options ?? []).forEach((opt) => {
-        initialConditional[opt] = [];
-      });
-      onUpdate(field.id, {
-        dependsOn: parentId,
-        conditionalOptions: initialConditional,
-        options: undefined,
-      });
+
+      const dsType = field.dataSource?.type;
+      const isRemoteDs = dsType === 'api' || dsType === 'graphql' || dsType === 'database';
+
+      if (isRemoteDs) {
+        // Remote data source: just set dependency, no conditionalOptions needed
+        onUpdate(field.id, {
+          dependsOn: parentId,
+          conditionalOptions: undefined,
+          options: undefined,
+        });
+      } else {
+        // Manual/bulk: initialize conditional options from parent's options
+        const initialConditional: Record<string, string[]> = {};
+        (parent.options ?? []).forEach((opt) => {
+          initialConditional[opt] = [];
+        });
+        onUpdate(field.id, {
+          dependsOn: parentId,
+          conditionalOptions: initialConditional,
+          options: undefined,
+        });
+      }
     }
   };
 
@@ -470,8 +487,8 @@ function DependencyConfig({
         </p>
       )}
 
-      {/* Conditional options editor */}
-      {field.dependsOn && parentField && (
+      {/* Conditional options editor — only for manual/bulk dependent selects */}
+      {field.dependsOn && parentField && (!field.dataSource || field.dataSource.type === 'manual' || field.dataSource.type === 'bulk') && (
         <ConditionalOptionsEditor
           parentField={parentField}
           conditionalOptions={field.conditionalOptions ?? {}}
@@ -479,6 +496,18 @@ function DependencyConfig({
             onUpdate(field.id, { conditionalOptions })
           }
         />
+      )}
+
+      {/* Info box for remote dependent selects */}
+      {field.dependsOn && parentField && field.dataSource && (field.dataSource.type === 'api' || field.dataSource.type === 'graphql' || field.dataSource.type === 'database') && (
+        <div className="flex items-start gap-2 rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/40 px-3 py-2.5">
+          <Info className="size-3.5 shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
+          <p className="text-[11px] text-blue-700 dark:text-blue-400">
+            Las opciones se cargan desde el origen de datos.
+            Usa <code className="font-mono bg-blue-100 dark:bg-blue-900/40 px-1 rounded text-[10px]">{'{{parent}}'}</code> en
+            la configuracion para insertar el valor seleccionado en &quot;{parentField.label}&quot;.
+          </p>
+        </div>
       )}
     </div>
   );

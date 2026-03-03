@@ -19,6 +19,8 @@ export type FetchableConfig =
 
 const cache = new Map<string, { data: ApiOptionItem[]; timestamp: number }>();
 
+const PARENT_RE = /\{\{parent\}\}/g;
+
 function resolvePath(obj: unknown, path: string): unknown {
   return path
     .split('.')
@@ -27,6 +29,58 @@ function resolvePath(obj: unknown, path: string): unknown {
         (current as Record<string, unknown> | undefined)?.[key],
       obj,
     );
+}
+
+// Replace {{parent}} in URL (URL-encoded) and in body/query/variables/headers (raw)
+function replaceTemplateEncoded(str: string, value: string): string {
+  return str.replace(PARENT_RE, encodeURIComponent(value));
+}
+
+function replaceTemplateRaw(str: string, value: string): string {
+  return str.replace(PARENT_RE, value);
+}
+
+function replaceHeaders(headers: Record<string, string> | undefined, value: string): Record<string, string> | undefined {
+  if (!headers) return headers;
+  return Object.fromEntries(
+    Object.entries(headers).map(([k, v]) => [k, replaceTemplateRaw(v, value)]),
+  );
+}
+
+function resolveParentInConfig(fc: FetchableConfig, parentValue: string): FetchableConfig {
+  if (fc.type === 'api') {
+    const c = fc.config;
+    return {
+      type: 'api',
+      config: {
+        ...c,
+        url: replaceTemplateEncoded(c.url, parentValue),
+        body: c.body ? replaceTemplateRaw(c.body, parentValue) : c.body,
+        headers: replaceHeaders(c.headers, parentValue),
+      },
+    };
+  }
+  const c = fc.config;
+  return {
+    type: 'graphql',
+    config: {
+      ...c,
+      url: replaceTemplateEncoded(c.url, parentValue),
+      query: replaceTemplateRaw(c.query, parentValue),
+      variables: c.variables ? replaceTemplateRaw(c.variables, parentValue) : c.variables,
+      headers: replaceHeaders(c.headers, parentValue),
+    },
+  };
+}
+
+function configContainsParentTemplate(fc: FetchableConfig): boolean {
+  const re = /\{\{parent\}\}/;
+  if (fc.type === 'api') {
+    const c = fc.config;
+    return re.test(c.url) || re.test(c.body ?? '') || Object.values(c.headers ?? {}).some((v) => re.test(v));
+  }
+  const c = fc.config;
+  return re.test(c.url) || re.test(c.query) || re.test(c.variables ?? '') || Object.values(c.headers ?? {}).some((v) => re.test(v));
 }
 
 function buildFetchRequest(fc: FetchableConfig): { url: string; init: RequestInit; cacheKey: string; responsePath: string; valueKey: string; labelKey: string; cacheTtl: number } {
@@ -50,7 +104,7 @@ function buildFetchRequest(fc: FetchableConfig): { url: string; init: RequestIni
         },
         body: JSON.stringify(gqlBody),
       },
-      cacheKey: `graphql:${c.url}:${c.query}`,
+      cacheKey: `graphql:${c.url}:${c.query}:${c.variables ?? ''}`,
       responsePath: c.responsePath,
       valueKey: c.valueKey,
       labelKey: c.labelKey,
@@ -72,7 +126,7 @@ function buildFetchRequest(fc: FetchableConfig): { url: string; init: RequestIni
   return {
     url: c.url,
     init,
-    cacheKey: `${c.method}:${c.url}`,
+    cacheKey: `${c.method}:${c.url}:${c.body ?? ''}`,
     responsePath: c.responsePath,
     valueKey: c.valueKey,
     labelKey: c.labelKey,
@@ -83,6 +137,7 @@ function buildFetchRequest(fc: FetchableConfig): { url: string; init: RequestIni
 export function useApiOptions(
   fetchable: FetchableConfig | undefined,
   enabled: boolean = true,
+  parentValue?: string,
 ): UseApiOptionsResult {
   const [options, setOptions] = useState<ApiOptionItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -105,7 +160,20 @@ export function useApiOptions(
     if (!fetchable || !configUrl || !enabled) return;
     if (fetchable.type === 'graphql' && !gqlQuery) return;
 
-    const req = buildFetchRequest(fetchable);
+    // If config uses {{parent}} but no parentValue provided, return empty
+    const hasTemplate = configContainsParentTemplate(fetchable);
+    if (hasTemplate && (!parentValue || parentValue.trim() === '')) {
+      setOptions([]);
+      setError(null);
+      return;
+    }
+
+    // Resolve {{parent}} template if needed
+    const resolved = hasTemplate && parentValue
+      ? resolveParentInConfig(fetchable, parentValue)
+      : fetchable;
+
+    const req = buildFetchRequest(resolved);
     const ttl = req.cacheTtl * 1000;
     const cached = cache.get(req.cacheKey);
     if (cached && Date.now() - cached.timestamp < ttl) {
@@ -172,7 +240,7 @@ export function useApiOptions(
     } finally {
       setIsLoading(false);
     }
-  }, [configUrl, configType, responsePath, valueKey, labelKey, cacheTtl, headers, restBody, gqlQuery, gqlVariables, enabled, fetchable]);
+  }, [configUrl, configType, responsePath, valueKey, labelKey, cacheTtl, headers, restBody, gqlQuery, gqlVariables, enabled, fetchable, parentValue]);
 
   useEffect(() => {
     fetchOptions();
