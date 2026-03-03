@@ -83,7 +83,7 @@ function getLuminance(hex: string): number {
 
 /** Choose white or near-black foreground for maximum contrast. */
 function getForeground(hex: string): string {
-  return getLuminance(hex) > 0.35 ? '#172B4D' : '#ffffff';
+  return getLuminance(hex) > 0.55 ? '#172B4D' : '#ffffff';
 }
 
 /**
