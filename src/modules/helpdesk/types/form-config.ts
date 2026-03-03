@@ -9,7 +9,11 @@ export type FieldType =
   | 'checkbox'
   | 'date'
   | 'phone'
-  | 'file';
+  | 'file'
+  | 'url'
+  | 'time'
+  | 'radio'
+  | 'heading';
 
 export interface FormField {
   id: string;
@@ -18,7 +22,27 @@ export interface FormField {
   placeholder?: string;
   required: boolean;
   options?: string[];
+  /** ID of another select field this field depends on */
+  dependsOn?: string;
+  /** Options grouped by parent value: { "España": ["Madrid", "Barcelona"], "México": ["CDMX", "Monterrey"] } */
+  conditionalOptions?: Record<string, string[]>;
   width: 'full' | 'half';
+  /** Enable search/filter in select dropdowns */
+  searchable?: boolean;
+  /** Help text shown below the field */
+  helperText?: string;
+  /** Min length for text/textarea, min value for number */
+  min?: number;
+  /** Max length for text/textarea, max value for number */
+  max?: number;
+  /** Number of rows for textarea */
+  rows?: number;
+  /** Accepted file types (e.g. ".pdf,.jpg,.png") */
+  accept?: string;
+  /** Whether to allow multiple files or selections */
+  multiple?: boolean;
+  /** Heading description (for heading type) */
+  headingDescription?: string;
 }
 
 export interface FormConfig {
@@ -44,11 +68,15 @@ export const FIELD_TYPES: FieldTypeMeta[] = [
   { type: 'email', label: 'Email', icon: 'Mail', defaultLabel: 'Correo electronico', defaultPlaceholder: 'tu@email.com' },
   { type: 'textarea', label: 'Texto largo', icon: 'AlignLeft', defaultLabel: 'Descripcion', defaultPlaceholder: 'Escribe una descripcion...' },
   { type: 'select', label: 'Seleccion', icon: 'ChevronDown', defaultLabel: 'Seleccionar opcion', defaultPlaceholder: 'Selecciona...' },
+  { type: 'radio', label: 'Opciones', icon: 'CircleDot', defaultLabel: 'Elige una opcion', defaultPlaceholder: '' },
   { type: 'number', label: 'Numero', icon: 'Hash', defaultLabel: 'Numero', defaultPlaceholder: '0' },
   { type: 'checkbox', label: 'Casilla', icon: 'CheckSquare', defaultLabel: 'Acepto los terminos', defaultPlaceholder: '' },
   { type: 'date', label: 'Fecha', icon: 'Calendar', defaultLabel: 'Fecha', defaultPlaceholder: 'dd/mm/aaaa' },
+  { type: 'time', label: 'Hora', icon: 'Clock', defaultLabel: 'Hora', defaultPlaceholder: 'HH:MM' },
   { type: 'phone', label: 'Telefono', icon: 'Phone', defaultLabel: 'Telefono', defaultPlaceholder: '+34 600 000 000' },
+  { type: 'url', label: 'URL', icon: 'Link', defaultLabel: 'Enlace', defaultPlaceholder: 'https://...' },
   { type: 'file', label: 'Archivo', icon: 'Paperclip', defaultLabel: 'Adjuntar archivo', defaultPlaceholder: '' },
+  { type: 'heading', label: 'Encabezado', icon: 'Heading', defaultLabel: 'Seccion', defaultPlaceholder: '' },
 ];
 
 // ─── localStorage helpers ────────────────────────────────────────────────────

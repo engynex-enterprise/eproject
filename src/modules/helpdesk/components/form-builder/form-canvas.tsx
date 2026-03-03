@@ -61,15 +61,21 @@ export function FormCanvas({
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {fields.map((field) => (
-                <CanvasField
-                  key={field.id}
-                  field={field}
-                  isSelected={selectedFieldId === field.id}
-                  onSelect={() => onSelectField(field.id)}
-                  onRemove={() => onRemoveField(field.id)}
-                />
-              ))}
+              {fields.map((field) => {
+                const parentLabel = field.dependsOn
+                  ? fields.find((f) => f.id === field.dependsOn)?.label
+                  : undefined;
+                return (
+                  <CanvasField
+                    key={field.id}
+                    field={field}
+                    isSelected={selectedFieldId === field.id}
+                    onSelect={() => onSelectField(field.id)}
+                    onRemove={() => onRemoveField(field.id)}
+                    parentFieldLabel={parentLabel}
+                  />
+                );
+              })}
             </div>
           )}
         </div>

@@ -15,6 +15,12 @@ import {
   Phone,
   Paperclip,
   Asterisk,
+  Link2,
+  Link,
+  Clock,
+  CircleDot,
+  Heading,
+  Search,
 } from 'lucide-react';
 import type { FormField, FieldType } from '../../types/form-config';
 import { Button } from '@/components/ui/button';
@@ -31,6 +37,10 @@ const ICON_MAP: Record<FieldType, React.ElementType> = {
   date: Calendar,
   phone: Phone,
   file: Paperclip,
+  url: Link,
+  time: Clock,
+  radio: CircleDot,
+  heading: Heading,
 };
 
 const TYPE_LABELS: Record<FieldType, string> = {
@@ -43,6 +53,10 @@ const TYPE_LABELS: Record<FieldType, string> = {
   date: 'Fecha',
   phone: 'Telefono',
   file: 'Archivo',
+  url: 'URL',
+  time: 'Hora',
+  radio: 'Opciones',
+  heading: 'Encabezado',
 };
 
 interface CanvasFieldProps {
@@ -51,6 +65,7 @@ interface CanvasFieldProps {
   onSelect: () => void;
   onRemove: () => void;
   isDragOverlay?: boolean;
+  parentFieldLabel?: string;
 }
 
 export function CanvasField({
@@ -59,6 +74,7 @@ export function CanvasField({
   onSelect,
   onRemove,
   isDragOverlay,
+  parentFieldLabel,
 }: CanvasFieldProps) {
   const {
     attributes,
@@ -132,6 +148,17 @@ export function CanvasField({
               50%
             </Badge>
           )}
+          {field.searchable && (
+            <Badge variant="outline" className="text-[10px] font-normal gap-0.5">
+              <Search className="size-2.5" />
+            </Badge>
+          )}
+          {parentFieldLabel && (
+            <Badge variant="outline" className="text-[10px] font-normal gap-0.5">
+              <Link2 className="size-2.5" />
+              {parentFieldLabel}
+            </Badge>
+          )}
           <Button
             variant="ghost"
             size="icon-xs"
@@ -158,7 +185,10 @@ function FieldPreview({ field }: { field: FormField }) {
   switch (field.type) {
     case 'textarea':
       return (
-        <div className="h-16 rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        <div
+          className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground"
+          style={{ height: `${(field.rows ?? 4) * 16}px`, maxHeight: '128px' }}
+        >
           {field.placeholder || 'Texto largo...'}
         </div>
       );
@@ -166,7 +196,26 @@ function FieldPreview({ field }: { field: FormField }) {
       return (
         <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           <span>{field.placeholder || 'Selecciona...'}</span>
-          <ChevronDown className="size-3" />
+          <div className="flex items-center gap-1">
+            {field.searchable && <Search className="size-3 text-primary" />}
+            <ChevronDown className="size-3" />
+          </div>
+        </div>
+      );
+    case 'radio':
+      return (
+        <div className="space-y-1.5">
+          {(field.options ?? ['Opcion 1', 'Opcion 2']).slice(0, 3).map((opt, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className="size-3.5 rounded-full border-2 border-muted-foreground/30" />
+              <span className="text-xs text-muted-foreground">{opt}</span>
+            </div>
+          ))}
+          {(field.options ?? []).length > 3 && (
+            <span className="text-[10px] text-muted-foreground">
+              +{(field.options ?? []).length - 3} mas
+            </span>
+          )}
         </div>
       );
     case 'checkbox':
@@ -180,7 +229,12 @@ function FieldPreview({ field }: { field: FormField }) {
       return (
         <div className="flex items-center justify-center rounded-md border border-dashed bg-muted/30 px-3 py-3 text-xs text-muted-foreground">
           <Paperclip className="size-3.5 mr-1.5" />
-          Haz clic o arrastra un archivo
+          {field.multiple ? 'Arrastra archivos aqui' : 'Haz clic o arrastra un archivo'}
+          {field.accept && (
+            <span className="ml-1 text-[10px] text-muted-foreground/60">
+              ({field.accept})
+            </span>
+          )}
         </div>
       );
     case 'date':
@@ -188,6 +242,32 @@ function FieldPreview({ field }: { field: FormField }) {
         <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           <span>{field.placeholder || 'dd/mm/aaaa'}</span>
           <Calendar className="size-3" />
+        </div>
+      );
+    case 'time':
+      return (
+        <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          <span>{field.placeholder || 'HH:MM'}</span>
+          <Clock className="size-3" />
+        </div>
+      );
+    case 'url':
+      return (
+        <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          <Link className="size-3 shrink-0" />
+          <span>{field.placeholder || 'https://...'}</span>
+        </div>
+      );
+    case 'heading':
+      return (
+        <div className="py-1">
+          <div className="text-sm font-semibold">{field.label}</div>
+          {field.headingDescription && (
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {field.headingDescription}
+            </p>
+          )}
+          <div className="mt-2 border-b" />
         </div>
       );
     default:

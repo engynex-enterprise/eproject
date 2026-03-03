@@ -140,7 +140,14 @@ export default function OrganizationHelpdeskPage() {
     (fieldId: string) => {
       setConfig((prev) => ({
         ...prev,
-        fields: prev.fields.filter((f) => f.id !== fieldId),
+        fields: prev.fields
+          .filter((f) => f.id !== fieldId)
+          // Clear dependency for any field that depended on the removed one
+          .map((f) =>
+            f.dependsOn === fieldId
+              ? { ...f, dependsOn: undefined, conditionalOptions: undefined }
+              : f,
+          ),
       }));
       if (selectedFieldId === fieldId) {
         setSelectedFieldId(null);
@@ -271,6 +278,7 @@ export default function OrganizationHelpdeskPage() {
           <div className="w-[280px] shrink-0 border-l overflow-y-auto p-4">
             <FieldConfigPanel
               field={selectedField}
+              allFields={config.fields}
               onUpdate={handleUpdateField}
             />
           </div>

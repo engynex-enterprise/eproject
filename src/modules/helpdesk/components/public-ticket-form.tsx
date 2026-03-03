@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Card,
   CardContent,
@@ -73,17 +74,61 @@ export function PublicTicketForm({ orgId }: PublicTicketFormProps) {
   };
 
   const updateFieldValue = (fieldId: string, value: string) => {
-    setFieldValues((prev) => ({ ...prev, [fieldId]: value }));
+    setFieldValues((prev) => {
+      const next = { ...prev, [fieldId]: value };
+      // Clear dependent children when parent value changes
+      if (formConfig) {
+        const clearDependents = (parentId: string) => {
+          formConfig.fields.forEach((f) => {
+            if (f.dependsOn === parentId) {
+              next[f.id] = '';
+              clearDependents(f.id); // cascade
+            }
+          });
+        };
+        clearDependents(fieldId);
+      }
+      return next;
+    });
   };
 
   const getFieldError = (field: FormField): string => {
+    if (field.type === 'heading') return '';
     const value = fieldValues[field.id] ?? '';
+
+    // Skip validation for dependent fields whose parent has no value
+    if (field.dependsOn) {
+      const parentValue = fieldValues[field.dependsOn] ?? '';
+      if (!parentValue) return '';
+    }
+
     if (field.required && !value.trim()) {
       return `${field.label} es requerido`;
     }
     if (field.type === 'email' && value.trim()) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
         return 'Ingresa un email valido';
+      }
+    }
+    if (field.type === 'url' && value.trim()) {
+      try {
+        new URL(value);
+      } catch {
+        return 'Ingresa una URL valida';
+      }
+    }
+    if (value.trim() && field.min != null) {
+      if (field.type === 'number') {
+        if (Number(value) < field.min) return `El valor minimo es ${field.min}`;
+      } else if (value.length < field.min) {
+        return `Minimo ${field.min} caracteres`;
+      }
+    }
+    if (value.trim() && field.max != null) {
+      if (field.type === 'number') {
+        if (Number(value) > field.max) return `El valor maximo es ${field.max}`;
+      } else if (value.length > field.max) {
+        return `Maximo ${field.max} caracteres`;
       }
     }
     return '';
@@ -250,6 +295,8 @@ export function PublicTicketForm({ orgId }: PublicTicketFormProps) {
                 onChange={(val) => updateFieldValue(field.id, val)}
                 onBlur={() => markTouched(field.id)}
                 error={touched[field.id] ? getFieldError(field) : ''}
+                allFields={formConfig.fields}
+                allFieldValues={fieldValues}
               />
             ))}
           </div>
@@ -318,6 +365,8 @@ interface DynamicFieldProps {
   onChange: (value: string) => void;
   onBlur: () => void;
   error: string;
+  allFields: FormField[];
+  allFieldValues: Record<string, string>;
 }
 
 function DynamicField({
@@ -326,6 +375,8 @@ function DynamicField({
   onChange,
   onBlur,
   error,
+  allFields,
+  allFieldValues,
 }: DynamicFieldProps) {
   const wrapperClass =
     field.width === 'half' ? 'col-span-1' : 'col-span-2';
@@ -337,7 +388,24 @@ function DynamicField({
     </Label>
   );
 
+  const helperText = field.helperText ? (
+    <p className="text-[11px] text-muted-foreground">{field.helperText}</p>
+  ) : null;
+
   switch (field.type) {
+    case 'heading':
+      return (
+        <div className={`col-span-2 pt-2`}>
+          <h3 className="text-base font-semibold">{field.label}</h3>
+          {field.headingDescription && (
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {field.headingDescription}
+            </p>
+          )}
+          <div className="mt-2 border-b" />
+        </div>
+      );
+
     case 'textarea':
       return (
         <div className={`space-y-2 ${wrapperClass}`}>
@@ -347,43 +415,132 @@ function DynamicField({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onBlur={onBlur}
-            rows={4}
+            rows={field.rows ?? 4}
+            minLength={field.min}
+            maxLength={field.max}
           />
+          {helperText}
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
       );
 
-    case 'select':
+    case 'select': {
+      let resolvedOptions: string[] = [];
+      let isDisabled = false;
+      let disabledMessage = '';
+
+      if (field.dependsOn && field.conditionalOptions) {
+        const parentField = allFields.find((f) => f.id === field.dependsOn);
+        const parentValue = allFieldValues[field.dependsOn] ?? '';
+        if (!parentValue) {
+          isDisabled = true;
+          disabledMessage = parentField
+            ? `Selecciona primero "${parentField.label}"`
+            : 'Selecciona el campo padre primero';
+        } else {
+          resolvedOptions = field.conditionalOptions[parentValue] ?? [];
+        }
+      } else {
+        resolvedOptions = field.options ?? [];
+      }
+
+      // Searchable select
+      if (field.searchable) {
+        return (
+          <div className={`space-y-2 ${wrapperClass}`}>
+            {label}
+            <SearchableSelect
+              value={value}
+              onValueChange={onChange}
+              options={resolvedOptions.map((opt) => ({
+                value: opt,
+                label: opt,
+              }))}
+              placeholder={
+                isDisabled
+                  ? disabledMessage
+                  : field.placeholder || 'Selecciona...'
+              }
+              searchPlaceholder="Buscar..."
+              emptyMessage="Sin resultados."
+              disabled={isDisabled}
+            />
+            {helperText}
+            {error && <p className="text-xs text-destructive">{error}</p>}
+          </div>
+        );
+      }
+
       return (
         <div className={`space-y-2 ${wrapperClass}`}>
           {label}
-          <Select value={value} onValueChange={onChange}>
+          <Select
+            value={value}
+            onValueChange={onChange}
+            disabled={isDisabled}
+          >
             <SelectTrigger>
-              <SelectValue placeholder={field.placeholder || 'Selecciona...'} />
+              <SelectValue
+                placeholder={
+                  isDisabled
+                    ? disabledMessage
+                    : field.placeholder || 'Selecciona...'
+                }
+              />
             </SelectTrigger>
             <SelectContent>
-              {(field.options ?? []).map((opt) => (
+              {resolvedOptions.map((opt) => (
                 <SelectItem key={opt} value={opt}>
                   {opt}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {helperText}
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+      );
+    }
+
+    case 'radio':
+      return (
+        <div className={`space-y-2 ${wrapperClass}`}>
+          {label}
+          <div className="space-y-2">
+            {(field.options ?? []).map((opt) => (
+              <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name={field.id}
+                  value={opt}
+                  checked={value === opt}
+                  onChange={() => onChange(opt)}
+                  onBlur={onBlur}
+                  className="size-4 accent-primary"
+                />
+                <span className="text-sm">{opt}</span>
+              </label>
+            ))}
+          </div>
+          {helperText}
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
       );
 
     case 'checkbox':
       return (
-        <div className={`flex items-center gap-2 ${wrapperClass}`}>
-          <input
-            type="checkbox"
-            checked={value === 'true'}
-            onChange={(e) => onChange(e.target.checked ? 'true' : '')}
-            onBlur={onBlur}
-            className="size-4 rounded border"
-          />
-          <Label className="font-normal">{field.label}</Label>
+        <div className={`space-y-1 ${wrapperClass}`}>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={value === 'true'}
+              onChange={(e) => onChange(e.target.checked ? 'true' : '')}
+              onBlur={onBlur}
+              className="size-4 rounded border accent-primary"
+            />
+            <Label className="font-normal">{field.label}</Label>
+          </div>
+          {helperText}
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
       );
@@ -394,8 +551,14 @@ function DynamicField({
           {label}
           <div className="flex items-center justify-center rounded-md border border-dashed bg-muted/30 px-3 py-4 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors">
             <Paperclip className="size-4 mr-2" />
-            Haz clic o arrastra un archivo
+            {field.multiple ? 'Arrastra archivos aqui' : 'Haz clic o arrastra un archivo'}
           </div>
+          {field.accept && (
+            <p className="text-[10px] text-muted-foreground">
+              Formatos aceptados: {field.accept}
+            </p>
+          )}
+          {helperText}
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
       );
@@ -410,6 +573,39 @@ function DynamicField({
             onChange={(e) => onChange(e.target.value)}
             onBlur={onBlur}
           />
+          {helperText}
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+      );
+
+    case 'time':
+      return (
+        <div className={`space-y-2 ${wrapperClass}`}>
+          {label}
+          <Input
+            type="time"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onBlur={onBlur}
+          />
+          {helperText}
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+      );
+
+    case 'url':
+      return (
+        <div className={`space-y-2 ${wrapperClass}`}>
+          {label}
+          <Input
+            type="url"
+            placeholder={field.placeholder || 'https://...'}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onBlur={onBlur}
+            aria-invalid={!!error}
+          />
+          {helperText}
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
       );
@@ -425,7 +621,12 @@ function DynamicField({
             onChange={(e) => onChange(e.target.value)}
             onBlur={onBlur}
             aria-invalid={!!error}
+            minLength={field.min}
+            maxLength={field.max}
+            min={field.type === 'number' ? field.min : undefined}
+            max={field.type === 'number' ? field.max : undefined}
           />
+          {helperText}
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
       );

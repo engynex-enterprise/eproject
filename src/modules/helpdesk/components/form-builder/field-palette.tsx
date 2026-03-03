@@ -12,6 +12,10 @@ import {
   Phone,
   Paperclip,
   GripVertical,
+  Link,
+  Clock,
+  CircleDot,
+  Heading,
 } from 'lucide-react';
 import { FIELD_TYPES, type FieldType } from '../../types/form-config';
 import { cn } from '@/lib/utils';
@@ -26,6 +30,10 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Calendar,
   Phone,
   Paperclip,
+  Link,
+  Clock,
+  CircleDot,
+  Heading,
 };
 
 interface PaletteItemProps {
