@@ -14,6 +14,7 @@ import {
   Lock,
   Wrench,
   Info,
+  Ticket,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -55,6 +56,12 @@ export const sidebarNavGroups: NavGroup[] = [
       { title: 'Personas', href: '/organization/members', icon: Users },
       { title: 'Roles y permisos', href: '/organization/roles', icon: Shield },
       { title: 'Auditoría', href: '/organization/audit', icon: Activity },
+    ],
+  },
+  {
+    label: 'Helpdesk',
+    items: [
+      { title: 'Formulario', href: '/organization/helpdesk', icon: Ticket },
     ],
   },
   {

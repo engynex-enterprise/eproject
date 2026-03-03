@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Loader2,
   CheckCircle,
@@ -8,6 +8,7 @@ import {
   Send,
   Ticket,
   AlertTriangle,
+  Paperclip,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  type FormConfig,
+  type FormField,
+  loadFormConfig,
+  getDefaultConfig,
+} from '../types/form-config';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -46,42 +53,48 @@ const PRIORITY_OPTIONS = [
 export function PublicTicketForm({ orgId }: PublicTicketFormProps) {
   const [formState, setFormState] = useState<FormState>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [formConfig, setFormConfig] = useState<FormConfig | null>(null);
 
-  // Form fields
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [subject, setSubject] = useState('');
-  const [description, setDescription] = useState('');
+  // Load form config from localStorage
+  useEffect(() => {
+    const config = loadFormConfig(orgId) ?? getDefaultConfig();
+    setFormConfig(config);
+  }, [orgId]);
+
+  // Dynamic field values (keyed by field.id)
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [priority, setPriority] = useState('medium');
 
   // Validation
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  const markTouched = (field: string) => {
-    setTouched((prev) => ({ ...prev, [field]: true }));
+  const markTouched = (fieldId: string) => {
+    setTouched((prev) => ({ ...prev, [fieldId]: true }));
   };
 
-  const errors = {
-    fullName: !fullName.trim() ? 'El nombre es requerido' : '',
-    email: !email.trim()
-      ? 'El email es requerido'
-      : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-        ? 'Ingresa un email valido'
-        : '',
-    subject: !subject.trim()
-      ? 'El asunto es requerido'
-      : subject.length > 500
-        ? 'El asunto no puede exceder 500 caracteres'
-        : '',
+  const updateFieldValue = (fieldId: string, value: string) => {
+    setFieldValues((prev) => ({ ...prev, [fieldId]: value }));
   };
 
-  const isValid = !errors.fullName && !errors.email && !errors.subject;
+  const getFieldError = (field: FormField): string => {
+    const value = fieldValues[field.id] ?? '';
+    if (field.required && !value.trim()) {
+      return `${field.label} es requerido`;
+    }
+    if (field.type === 'email' && value.trim()) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        return 'Ingresa un email valido';
+      }
+    }
+    return '';
+  };
+
+  const isValid = formConfig
+    ? formConfig.fields.every((f) => !getFieldError(f))
+    : false;
 
   const resetForm = () => {
-    setFullName('');
-    setEmail('');
-    setSubject('');
-    setDescription('');
+    setFieldValues({});
     setPriority('medium');
     setTouched({});
     setFormState('idle');
@@ -90,14 +103,43 @@ export function PublicTicketForm({ orgId }: PublicTicketFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formConfig) return;
 
-    // Mark all as touched to show errors
-    setTouched({ fullName: true, email: true, subject: true });
+    // Mark all required fields as touched
+    const allTouched: Record<string, boolean> = {};
+    formConfig.fields.forEach((f) => {
+      allTouched[f.id] = true;
+    });
+    setTouched(allTouched);
 
     if (!isValid) return;
 
     setFormState('submitting');
     setErrorMessage('');
+
+    // Detect well-known fields by type/label
+    const subjectField = formConfig.fields.find(
+      (f) => f.type === 'text' && f.label.toLowerCase().includes('asunto'),
+    );
+    const descriptionField = formConfig.fields.find(
+      (f) => f.type === 'textarea',
+    );
+    const nameField = formConfig.fields.find(
+      (f) =>
+        f.type === 'text' &&
+        (f.label.toLowerCase().includes('nombre') ||
+          f.label.toLowerCase().includes('name')),
+    );
+    const emailField = formConfig.fields.find((f) => f.type === 'email');
+
+    const subject =
+      (subjectField ? fieldValues[subjectField.id]?.trim() : '') ||
+      'Ticket desde formulario publico';
+    const description = descriptionField
+      ? fieldValues[descriptionField.id]?.trim()
+      : '';
+    const contactName = nameField ? fieldValues[nameField.id]?.trim() : '';
+    const contactEmail = emailField ? fieldValues[emailField.id]?.trim() : '';
 
     try {
       const res = await fetch(
@@ -106,13 +148,12 @@ export function PublicTicketForm({ orgId }: PublicTicketFormProps) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            subject: subject.trim(),
-            description: description.trim() || undefined,
+            subject,
+            description: description || undefined,
             priority,
             type: 'external',
-            // Contact info sent as part of the ticket
-            contactName: fullName.trim(),
-            contactEmail: email.trim(),
+            contactName: contactName || undefined,
+            contactEmail: contactEmail || undefined,
           }),
         },
       );
@@ -131,6 +172,17 @@ export function PublicTicketForm({ orgId }: PublicTicketFormProps) {
     }
   };
 
+  // Loading state
+  if (!formConfig) {
+    return (
+      <Card className="w-full max-w-lg mx-auto">
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
   // ── Success state ──────────────────────────────────────────────────────
   if (formState === 'success') {
     return (
@@ -139,11 +191,11 @@ export function PublicTicketForm({ orgId }: PublicTicketFormProps) {
           <div className="flex size-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
             <CheckCircle className="size-8 text-green-600 dark:text-green-400" />
           </div>
-          <h3 className="text-lg font-semibold">Ticket enviado correctamente</h3>
+          <h3 className="text-lg font-semibold">
+            {formConfig.successMessage || 'Ticket enviado correctamente'}
+          </h3>
           <p className="mt-2 text-sm text-muted-foreground max-w-sm">
-            Hemos recibido tu solicitud. Te contactaremos al email{' '}
-            <span className="font-medium text-foreground">{email}</span> con
-            actualizaciones.
+            Hemos recibido tu solicitud. Te contactaremos con actualizaciones.
           </p>
           <Button onClick={resetForm} variant="outline" className="mt-6">
             Enviar otro ticket
@@ -182,94 +234,24 @@ export function PublicTicketForm({ orgId }: PublicTicketFormProps) {
         <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-3">
           <Ticket className="size-6 text-primary" />
         </div>
-        <CardTitle className="text-xl">Enviar un ticket</CardTitle>
-        <CardDescription>
-          Completa el formulario y nos pondremos en contacto contigo lo antes
-          posible.
-        </CardDescription>
+        <CardTitle className="text-xl">{formConfig.title}</CardTitle>
+        <CardDescription>{formConfig.description}</CardDescription>
       </CardHeader>
 
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Full name & Email - side by side */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="pub-fullname">
-                Nombre completo <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="pub-fullname"
-                placeholder="Tu nombre"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                onBlur={() => markTouched('fullName')}
-                aria-invalid={touched.fullName && !!errors.fullName}
+          {/* Dynamic fields from config */}
+          <div className="grid grid-cols-2 gap-4">
+            {formConfig.fields.map((field) => (
+              <DynamicField
+                key={field.id}
+                field={field}
+                value={fieldValues[field.id] ?? ''}
+                onChange={(val) => updateFieldValue(field.id, val)}
+                onBlur={() => markTouched(field.id)}
+                error={touched[field.id] ? getFieldError(field) : ''}
               />
-              {touched.fullName && errors.fullName && (
-                <p className="text-xs text-destructive">{errors.fullName}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pub-email">
-                Email <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="pub-email"
-                type="email"
-                placeholder="tu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onBlur={() => markTouched('email')}
-                aria-invalid={touched.email && !!errors.email}
-              />
-              {touched.email && errors.email && (
-                <p className="text-xs text-destructive">{errors.email}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Subject */}
-          <div className="space-y-2">
-            <Label htmlFor="pub-subject">
-              Asunto <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="pub-subject"
-              placeholder="Resumen breve de tu solicitud"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              onBlur={() => markTouched('subject')}
-              maxLength={500}
-              aria-invalid={touched.subject && !!errors.subject}
-            />
-            <div className="flex items-center justify-between">
-              {touched.subject && errors.subject ? (
-                <p className="text-xs text-destructive">{errors.subject}</p>
-              ) : (
-                <span />
-              )}
-              <span className="text-[11px] text-muted-foreground">
-                {subject.length}/500
-              </span>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="pub-description">
-              Descripcion{' '}
-              <span className="text-muted-foreground font-normal">
-                (opcional)
-              </span>
-            </Label>
-            <Textarea
-              id="pub-description"
-              placeholder="Describe tu problema o solicitud con el mayor detalle posible..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-            />
+            ))}
           </div>
 
           {/* Priority */}
@@ -318,7 +300,7 @@ export function PublicTicketForm({ orgId }: PublicTicketFormProps) {
             ) : (
               <>
                 <Send className="size-4" />
-                Enviar ticket
+                {formConfig.submitLabel || 'Enviar ticket'}
               </>
             )}
           </Button>
@@ -326,4 +308,126 @@ export function PublicTicketForm({ orgId }: PublicTicketFormProps) {
       </CardContent>
     </Card>
   );
+}
+
+// ─── Dynamic Field Renderer ─────────────────────────────────────────────────
+
+interface DynamicFieldProps {
+  field: FormField;
+  value: string;
+  onChange: (value: string) => void;
+  onBlur: () => void;
+  error: string;
+}
+
+function DynamicField({
+  field,
+  value,
+  onChange,
+  onBlur,
+  error,
+}: DynamicFieldProps) {
+  const wrapperClass =
+    field.width === 'half' ? 'col-span-1' : 'col-span-2';
+
+  const label = (
+    <Label>
+      {field.label}{' '}
+      {field.required && <span className="text-destructive">*</span>}
+    </Label>
+  );
+
+  switch (field.type) {
+    case 'textarea':
+      return (
+        <div className={`space-y-2 ${wrapperClass}`}>
+          {label}
+          <Textarea
+            placeholder={field.placeholder}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onBlur={onBlur}
+            rows={4}
+          />
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+      );
+
+    case 'select':
+      return (
+        <div className={`space-y-2 ${wrapperClass}`}>
+          {label}
+          <Select value={value} onValueChange={onChange}>
+            <SelectTrigger>
+              <SelectValue placeholder={field.placeholder || 'Selecciona...'} />
+            </SelectTrigger>
+            <SelectContent>
+              {(field.options ?? []).map((opt) => (
+                <SelectItem key={opt} value={opt}>
+                  {opt}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+      );
+
+    case 'checkbox':
+      return (
+        <div className={`flex items-center gap-2 ${wrapperClass}`}>
+          <input
+            type="checkbox"
+            checked={value === 'true'}
+            onChange={(e) => onChange(e.target.checked ? 'true' : '')}
+            onBlur={onBlur}
+            className="size-4 rounded border"
+          />
+          <Label className="font-normal">{field.label}</Label>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+      );
+
+    case 'file':
+      return (
+        <div className={`space-y-2 ${wrapperClass}`}>
+          {label}
+          <div className="flex items-center justify-center rounded-md border border-dashed bg-muted/30 px-3 py-4 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors">
+            <Paperclip className="size-4 mr-2" />
+            Haz clic o arrastra un archivo
+          </div>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+      );
+
+    case 'date':
+      return (
+        <div className={`space-y-2 ${wrapperClass}`}>
+          {label}
+          <Input
+            type="date"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onBlur={onBlur}
+          />
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+      );
+
+    default:
+      return (
+        <div className={`space-y-2 ${wrapperClass}`}>
+          {label}
+          <Input
+            type={field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : field.type === 'number' ? 'number' : 'text'}
+            placeholder={field.placeholder}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onBlur={onBlur}
+            aria-invalid={!!error}
+          />
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+      );
+  }
 }

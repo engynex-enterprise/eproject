@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
-import { Plus, Download } from 'lucide-react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import Link from 'next/link';
+import { Plus, Download, FileText, Settings } from 'lucide-react';
 import { sileo } from 'sileo';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/shared/lib/api-client';
 import type { Issue, PaginatedResponse } from '@/shared/types';
+import { useAuthStore } from '@/shared/stores/auth.store';
+import { hasFormConfig } from '@/modules/helpdesk/types/form-config';
 import { HelpdeskDashboard } from '@/modules/helpdesk/components/helpdesk-dashboard';
 import { HelpdeskToolbar } from '@/modules/helpdesk/components/helpdesk-toolbar';
 import { TicketList } from '@/modules/helpdesk/components/ticket-list';
@@ -42,6 +45,15 @@ function useTickets(filter: TicketFilter, search: string) {
 }
 
 export default function HelpdeskPage() {
+  const { currentOrgId } = useAuthStore();
+  const orgId = currentOrgId ?? 0;
+
+  // Check if form config exists (client-only)
+  const [formExists, setFormExists] = useState<boolean | null>(null);
+  useEffect(() => {
+    setFormExists(hasFormConfig(orgId));
+  }, [orgId]);
+
   // Filters & view
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<TicketSortBy>('recent');
@@ -129,6 +141,35 @@ export default function HelpdeskPage() {
     });
   }, [tickets]);
 
+  // ── Empty state: no form configured ──────────────────────────────────────
+  if (formExists === false) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-4 text-center max-w-md">
+          <div className="flex size-16 items-center justify-center rounded-full bg-muted">
+            <FileText className="size-7 text-muted-foreground" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">
+              No hay formulario configurado
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Configura tu formulario publico para recibir tickets de usuarios
+              externos. Arrastra y suelta campos para personalizar el
+              formulario a las necesidades de tu empresa.
+            </p>
+          </div>
+          <Link href="/organization/helpdesk">
+            <Button>
+              <Settings className="size-4" />
+              Crear formulario
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
       {/* Header */}
@@ -139,10 +180,18 @@ export default function HelpdeskPage() {
             Gestiona y accede a todos tus tickets de soporte.
           </p>
         </div>
-        <Button>
-          <Plus className="size-4" />
-          Crear ticket
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href="/organization/helpdesk">
+            <Button variant="outline">
+              <Settings className="size-4" />
+              Configurar formulario
+            </Button>
+          </Link>
+          <Button>
+            <Plus className="size-4" />
+            Crear ticket
+          </Button>
+        </div>
       </div>
 
       {/* Dashboard stats */}
