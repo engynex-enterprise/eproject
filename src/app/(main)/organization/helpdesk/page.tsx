@@ -19,10 +19,10 @@ import {
   ExternalLink,
   RotateCcw,
   Loader2,
+  Layers,
 } from 'lucide-react';
 import { sileo } from 'sileo';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/shared/stores/auth.store';
 import {
@@ -208,40 +208,45 @@ export default function OrganizationHelpdeskPage() {
     : null;
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="border-b px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight">
-              Constructor de formulario
-            </h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Configura el formulario publico para recibir tickets de soporte
-            </p>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="-m-4 md:-m-6 flex flex-col h-[calc(100svh-3.5rem-1px)] overflow-hidden">
+        {/* ── Sticky header ─────────────────────────────────────────────── */}
+        <div className="shrink-0 border-b bg-background px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+                <Layers className="size-4 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold tracking-tight">
+                  Constructor de formulario
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Configura el formulario publico para recibir tickets
+                </p>
+              </div>
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              {config.fields.length} campo{config.fields.length !== 1 && 's'}
+            </Badge>
           </div>
-          <Badge variant="secondary" className="text-xs">
-            {config.fields.length} campo{config.fields.length !== 1 && 's'}
-          </Badge>
         </div>
-      </div>
 
-      {/* Body: 3-column layout */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex flex-1 overflow-hidden">
+        {/* ── 3-column body (each with independent scroll) ──────────────── */}
+        <div className="flex min-h-0 flex-1">
           {/* Left: Field palette */}
-          <div className="w-[240px] shrink-0 border-r overflow-y-auto p-4">
+          <div className="w-[220px] shrink-0 border-r bg-background overflow-y-auto p-3 pb-16">
             <FieldPalette />
           </div>
 
           {/* Center: Canvas */}
-          <div className="flex-1 overflow-y-auto p-6 bg-muted/30">
+          <div className="flex-1 bg-muted/30 overflow-y-auto p-5 pb-16">
             <FormCanvas
               fields={config.fields}
               selectedFieldId={selectedFieldId}
@@ -253,7 +258,7 @@ export default function OrganizationHelpdeskPage() {
           </div>
 
           {/* Right: Config panel */}
-          <div className="w-[280px] shrink-0 border-l overflow-y-auto p-4">
+          <div className="w-[280px] shrink-0 border-l bg-background overflow-y-auto p-3 pb-16">
             <FieldConfigPanel
               field={selectedField}
               allFields={config.fields}
@@ -262,7 +267,7 @@ export default function OrganizationHelpdeskPage() {
           </div>
         </div>
 
-        {/* Drag overlay */}
+        {/* ── Drag overlay ──────────────────────────────────────────────── */}
         <DragOverlay>
           {activeField ? (
             <CanvasField
@@ -282,9 +287,9 @@ export default function OrganizationHelpdeskPage() {
             );
           })() : null}
         </DragOverlay>
-      </DndContext>
+      </div>
 
-      {/* Fixed bottom bar */}
+      {/* ── Fixed bottom bar ──────────────────────────────────────────── */}
       <div
         className="fixed bottom-0 right-0 z-20 border-t bg-background/80 backdrop-blur-sm"
         style={{ left: 'var(--sidebar-width)' }}
@@ -298,11 +303,7 @@ export default function OrganizationHelpdeskPage() {
               <RotateCcw className="size-3.5" />
               Restablecer
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-            >
+            <Button variant="outline" size="sm" asChild>
               <a
                 href={`/submit-ticket?orgId=${orgId}`}
                 target="_blank"
@@ -323,6 +324,6 @@ export default function OrganizationHelpdeskPage() {
           </div>
         </div>
       </div>
-    </div>
+    </DndContext>
   );
 }

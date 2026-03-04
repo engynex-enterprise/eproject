@@ -55,7 +55,7 @@ export function FormCanvas({
   const showAtEnd = isDragging && isPaletteDrag && overId === 'form-canvas' && fields.length > 0;
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1">
       <SortableContext
         items={fields.map((f) => f.id)}
         strategy={verticalListSortingStrategy}
