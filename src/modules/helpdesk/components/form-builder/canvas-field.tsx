@@ -31,7 +31,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-const ICON_MAP: Record<FieldType, React.ElementType> = {
+export const ICON_MAP: Record<FieldType, React.ElementType> = {
   text: Type,
   email: Mail,
   textarea: AlignLeft,
@@ -70,6 +70,7 @@ interface CanvasFieldProps {
   onRemove: () => void;
   isDragOverlay?: boolean;
   parentFieldLabel?: string;
+  isDropTarget?: boolean;
 }
 
 export function CanvasField({
@@ -79,6 +80,7 @@ export function CanvasField({
   onRemove,
   isDragOverlay,
   parentFieldLabel,
+  isDropTarget,
 }: CanvasFieldProps) {
   const {
     attributes,
@@ -112,6 +114,7 @@ export function CanvasField({
           : 'border-border hover:border-primary/30',
         isDragging && 'opacity-40',
         isDragOverlay && 'rotate-1 shadow-lg',
+        isDropTarget && !isDragging && 'ring-1 ring-primary/30 bg-primary/[0.03]',
         field.width === 'half' ? 'col-span-1' : 'col-span-2',
       )}
       onClick={onSelect}

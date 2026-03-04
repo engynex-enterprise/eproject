@@ -28,6 +28,7 @@ import { useAuthStore } from '@/shared/stores/auth.store';
 import {
   type FormField,
   type FormConfig,
+  type FieldType,
   FIELD_TYPES,
   getDefaultConfig,
   loadFormConfig,
@@ -36,7 +37,7 @@ import {
 } from '@/modules/helpdesk/types/form-config';
 import { FieldPalette } from '@/modules/helpdesk/components/form-builder/field-palette';
 import { FormCanvas } from '@/modules/helpdesk/components/form-builder/form-canvas';
-import { CanvasField } from '@/modules/helpdesk/components/form-builder/canvas-field';
+import { CanvasField, ICON_MAP } from '@/modules/helpdesk/components/form-builder/canvas-field';
 import { FieldConfigPanel } from '@/modules/helpdesk/components/form-builder/field-config-panel';
 
 export default function OrganizationHelpdeskPage() {
@@ -50,6 +51,7 @@ export default function OrganizationHelpdeskPage() {
 
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const selectedField =
@@ -66,14 +68,16 @@ export default function OrganizationHelpdeskPage() {
     setActiveId(String(event.active.id));
   }, []);
 
-  const handleDragOver = useCallback((_event: DragOverEvent) => {
-    // We handle everything in dragEnd
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { over } = event;
+    setOverId(over ? String(over.id) : null);
   }, []);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
       setActiveId(null);
+      setOverId(null);
 
       if (!over) return;
 
@@ -271,6 +275,8 @@ export default function OrganizationHelpdeskPage() {
               selectedFieldId={selectedFieldId}
               onSelectField={handleSelectField}
               onRemoveField={handleRemoveField}
+              activeId={activeId}
+              overId={overId}
             />
           </div>
 
@@ -294,11 +300,15 @@ export default function OrganizationHelpdeskPage() {
               onRemove={() => {}}
               isDragOverlay
             />
-          ) : activePaletteMeta ? (
-            <div className="flex items-center gap-2.5 rounded-lg border bg-card px-3 py-2.5 text-sm shadow-lg rotate-1">
-              <span className="font-medium">{activePaletteMeta.label}</span>
-            </div>
-          ) : null}
+          ) : activePaletteMeta ? (() => {
+            const PaletteIcon = ICON_MAP[activePaletteMeta.type as FieldType];
+            return (
+              <div className="flex items-center gap-2.5 rounded-lg border bg-card px-3 py-2.5 text-sm shadow-lg rotate-1">
+                {PaletteIcon && <PaletteIcon className="size-4 shrink-0 text-muted-foreground" />}
+                <span className="font-medium">{activePaletteMeta.label}</span>
+              </div>
+            );
+          })() : null}
         </DragOverlay>
       </DndContext>
     </div>

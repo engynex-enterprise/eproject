@@ -1,5 +1,6 @@
 'use client';
 
+import { Fragment } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -15,6 +16,18 @@ interface FormCanvasProps {
   selectedFieldId: string | null;
   onSelectField: (fieldId: string) => void;
   onRemoveField: (fieldId: string) => void;
+  activeId: string | null;
+  overId: string | null;
+}
+
+function DropIndicator() {
+  return (
+    <div className="col-span-2 flex items-center gap-1.5 py-0.5 animate-in fade-in duration-150">
+      <div className="size-1.5 rounded-full bg-primary shrink-0" />
+      <div className="flex-1 h-0.5 bg-primary rounded-full" />
+      <div className="size-1.5 rounded-full bg-primary shrink-0" />
+    </div>
+  );
 }
 
 export function FormCanvas({
@@ -22,11 +35,24 @@ export function FormCanvas({
   selectedFieldId,
   onSelectField,
   onRemoveField,
+  activeId,
+  overId,
 }: FormCanvasProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: 'form-canvas',
     data: { type: 'canvas' },
   });
+
+  // Determine drag source type
+  const isDragging = !!activeId;
+  const isPaletteDrag = activeId?.startsWith('palette-') ?? false;
+  const isCanvasReorder = isDragging && !isPaletteDrag;
+
+  // Determine if overId points to a field in the canvas
+  const overIsField = overId ? fields.some((f) => f.id === overId) : false;
+
+  // Show indicator at end when hovering over the canvas container itself
+  const showAtEnd = isDragging && isPaletteDrag && overId === 'form-canvas' && fields.length > 0;
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -65,17 +91,29 @@ export function FormCanvas({
                 const parentLabel = field.dependsOn
                   ? fields.find((f) => f.id === field.dependsOn)?.label
                   : undefined;
+
+                const isTarget = overIsField && overId === field.id;
+                // Palette drops insert AFTER the target field
+                const showAfter = isTarget && isPaletteDrag;
+                // Canvas reorder: show indicator BEFORE the target
+                const showBefore = isTarget && isCanvasReorder && field.id !== activeId;
+
                 return (
-                  <CanvasField
-                    key={field.id}
-                    field={field}
-                    isSelected={selectedFieldId === field.id}
-                    onSelect={() => onSelectField(field.id)}
-                    onRemove={() => onRemoveField(field.id)}
-                    parentFieldLabel={parentLabel}
-                  />
+                  <Fragment key={field.id}>
+                    {showBefore && <DropIndicator />}
+                    <CanvasField
+                      field={field}
+                      isSelected={selectedFieldId === field.id}
+                      onSelect={() => onSelectField(field.id)}
+                      onRemove={() => onRemoveField(field.id)}
+                      parentFieldLabel={parentLabel}
+                      isDropTarget={isTarget && field.id !== activeId}
+                    />
+                    {showAfter && <DropIndicator />}
+                  </Fragment>
                 );
               })}
+              {showAtEnd && <DropIndicator />}
             </div>
           )}
         </div>
