@@ -220,37 +220,9 @@ export default function OrganizationHelpdeskPage() {
               Configura el formulario publico para recibir tickets de soporte
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="text-xs">
-              {config.fields.length} campo{config.fields.length !== 1 && 's'}
-            </Badge>
-            <Button variant="outline" size="sm" onClick={handleReset}>
-              <RotateCcw className="size-3.5" />
-              Restablecer
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-            >
-              <a
-                href={`/submit-ticket?orgId=${orgId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink className="size-3.5" />
-                Vista previa
-              </a>
-            </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving}>
-              {saving ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Save className="size-3.5" />
-              )}
-              Guardar
-            </Button>
-          </div>
+          <Badge variant="secondary" className="text-xs">
+            {config.fields.length} campo{config.fields.length !== 1 && 's'}
+          </Badge>
         </div>
       </div>
 
@@ -311,6 +283,46 @@ export default function OrganizationHelpdeskPage() {
           })() : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Fixed bottom bar */}
+      <div
+        className="fixed bottom-0 right-0 z-20 border-t bg-background/80 backdrop-blur-sm"
+        style={{ left: 'var(--sidebar-width)' }}
+      >
+        <div className="flex items-center justify-between px-6 py-3">
+          <p className="text-xs text-muted-foreground">
+            Los cambios no se guardan automaticamente.
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleReset}>
+              <RotateCcw className="size-3.5" />
+              Restablecer
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+            >
+              <a
+                href={`/submit-ticket?orgId=${orgId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ExternalLink className="size-3.5" />
+                Vista previa
+              </a>
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Save className="size-3.5" />
+              )}
+              Guardar
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
