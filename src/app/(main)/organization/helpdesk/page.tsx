@@ -39,10 +39,12 @@ import { FieldPalette } from '@/modules/helpdesk/components/form-builder/field-p
 import { FormCanvas } from '@/modules/helpdesk/components/form-builder/form-canvas';
 import { CanvasField, ICON_MAP } from '@/modules/helpdesk/components/form-builder/canvas-field';
 import { FieldConfigPanel } from '@/modules/helpdesk/components/form-builder/field-config-panel';
+import { useSidebar } from '@/components/ui/sidebar';
 
 export default function OrganizationHelpdeskPage() {
   const { currentOrgId } = useAuthStore();
   const orgId = currentOrgId ?? 1;
+  const { state: sidebarState } = useSidebar();
 
   // Load initial config
   const [config, setConfig] = useState<FormConfig>(() => {
@@ -291,8 +293,8 @@ export default function OrganizationHelpdeskPage() {
 
       {/* ── Fixed bottom bar ──────────────────────────────────────────── */}
       <div
-        className="fixed bottom-0 right-0 z-20 border-t bg-background/80 backdrop-blur-sm"
-        style={{ left: 'var(--sidebar-width)' }}
+        className="fixed bottom-0 right-0 z-20 border-t bg-background/80 backdrop-blur-sm transition-[left] duration-200 ease-linear"
+        style={{ left: sidebarState === 'collapsed' ? '0px' : 'var(--sidebar-width)' }}
       >
         <div className="flex items-center justify-between px-6 py-3">
           <p className="text-xs text-muted-foreground">
