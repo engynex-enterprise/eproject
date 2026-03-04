@@ -241,12 +241,12 @@ export default function OrganizationHelpdeskPage() {
         {/* ── 3-column body (each with independent scroll) ──────────────── */}
         <div className="flex min-h-0 flex-1">
           {/* Left: Field palette */}
-          <div className="w-[220px] shrink-0 border-r bg-background overflow-y-auto p-3 pb-16">
+          <div className="w-[220px] shrink-0 border-r bg-background scrollbar-autohide p-3 pb-16">
             <FieldPalette />
           </div>
 
           {/* Center: Canvas */}
-          <div className="flex-1 bg-muted/30 overflow-y-auto p-5 pb-16">
+          <div className="flex-1 bg-muted/30 scrollbar-autohide p-5 pb-16">
             <FormCanvas
               fields={config.fields}
               selectedFieldId={selectedFieldId}
@@ -258,7 +258,7 @@ export default function OrganizationHelpdeskPage() {
           </div>
 
           {/* Right: Config panel */}
-          <div className="w-[280px] shrink-0 border-l bg-background overflow-y-auto p-3 pb-16">
+          <div className="w-[280px] shrink-0 border-l bg-background scrollbar-autohide p-3 pb-16">
             <FieldConfigPanel
               field={selectedField}
               allFields={config.fields}
