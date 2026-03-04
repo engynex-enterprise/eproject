@@ -144,24 +144,31 @@ export function useApiOptions(
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Stable serialization for deps
+  // Keep a ref to fetchable so the callback always sees the latest value
+  // without needing the object itself as a dependency (which would cause
+  // infinite re-renders since buildFetchableConfig creates a new object each render)
+  const fetchableRef = useRef(fetchable);
+  fetchableRef.current = fetchable;
+
+  // Stable serialization for deps — only primitives
   const configUrl = fetchable?.config.url;
   const configType = fetchable?.type;
   const responsePath = fetchable?.config.responsePath;
   const valueKey = fetchable?.config.valueKey;
   const labelKey = fetchable?.config.labelKey;
   const cacheTtl = fetchable?.config.cacheTtl;
-  const headers = fetchable?.config.headers;
+  const headersJson = JSON.stringify(fetchable?.config.headers ?? null);
   const restBody = fetchable?.type === 'api' ? fetchable.config.body : undefined;
   const gqlQuery = fetchable?.type === 'graphql' ? fetchable.config.query : undefined;
   const gqlVariables = fetchable?.type === 'graphql' ? fetchable.config.variables : undefined;
 
   const fetchOptions = useCallback(async () => {
-    if (!fetchable || !configUrl || !enabled) return;
-    if (fetchable.type === 'graphql' && !gqlQuery) return;
+    const fc = fetchableRef.current;
+    if (!fc || !configUrl || !enabled) return;
+    if (fc.type === 'graphql' && !gqlQuery) return;
 
     // If config uses {{parent}} but no parentValue provided, return empty
-    const hasTemplate = configContainsParentTemplate(fetchable);
+    const hasTemplate = configContainsParentTemplate(fc);
     if (hasTemplate && (!parentValue || parentValue.trim() === '')) {
       setOptions([]);
       setError(null);
@@ -170,8 +177,8 @@ export function useApiOptions(
 
     // Resolve {{parent}} template if needed
     const resolved = hasTemplate && parentValue
-      ? resolveParentInConfig(fetchable, parentValue)
-      : fetchable;
+      ? resolveParentInConfig(fc, parentValue)
+      : fc;
 
     const req = buildFetchRequest(resolved);
     const ttl = req.cacheTtl * 1000;
@@ -240,7 +247,8 @@ export function useApiOptions(
     } finally {
       setIsLoading(false);
     }
-  }, [configUrl, configType, responsePath, valueKey, labelKey, cacheTtl, headers, restBody, gqlQuery, gqlVariables, enabled, fetchable, parentValue]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configUrl, configType, responsePath, valueKey, labelKey, cacheTtl, headersJson, restBody, gqlQuery, gqlVariables, enabled, parentValue]);
 
   useEffect(() => {
     fetchOptions();
