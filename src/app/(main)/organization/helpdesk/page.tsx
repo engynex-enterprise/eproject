@@ -174,6 +174,25 @@ export default function OrganizationHelpdeskPage() {
     [],
   );
 
+  const handleDuplicateField = useCallback((fieldId: string) => {
+    setConfig((prev) => {
+      const source = prev.fields.find((f) => f.id === fieldId);
+      if (!source) return prev;
+      const clone: FormField = {
+        ...source,
+        id: generateFieldId(),
+        label: `${source.label} (copia)`,
+        dependsOn: undefined,
+        conditionalOptions: undefined,
+        visibilityCondition: undefined,
+      };
+      const index = prev.fields.findIndex((f) => f.id === fieldId);
+      const next = [...prev.fields];
+      next.splice(index + 1, 0, clone);
+      return { ...prev, fields: next };
+    });
+  }, []);
+
   // ── Save / Reset ─────────────────────────────────────────────────────────
   const handleSave = useCallback(() => {
     setSaving(true);
@@ -254,6 +273,7 @@ export default function OrganizationHelpdeskPage() {
               selectedFieldId={selectedFieldId}
               onSelectField={handleSelectField}
               onRemoveField={handleRemoveField}
+              onDuplicateField={handleDuplicateField}
               activeId={activeId}
               overId={overId}
             />

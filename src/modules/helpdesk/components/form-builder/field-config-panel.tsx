@@ -14,7 +14,8 @@ import {
   FileText,
   Info,
 } from 'lucide-react';
-import type { FormField } from '../../types/form-config';
+import type { FormField, FieldWidth, VisibilityOperator } from '../../types/form-config';
+import { WIDTH_LABELS } from '../../types/form-config';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -64,8 +65,19 @@ export function FieldConfigPanel({ field, allFields, onUpdate }: FieldConfigPane
     : null;
 
   const isInputType = ['text', 'email', 'phone', 'url'].includes(field.type);
-  const hasPlaceholder = !['checkbox', 'file', 'heading', 'radio'].includes(field.type);
+  const hasPlaceholder = !['checkbox', 'file', 'heading', 'radio', 'divider', 'hidden', 'rating'].includes(field.type);
   const hasOptions = field.type === 'select' || field.type === 'radio';
+  const isLayoutOnly = field.type === 'heading' || field.type === 'divider';
+  const hasDefaultValue = !['heading', 'divider', 'file'].includes(field.type);
+  const hasPatternValidation = ['text', 'email', 'phone', 'url', 'textarea'].includes(field.type);
+
+  // Fields that can be used as visibility conditions (all before current, except divider/heading)
+  const availableConditionFields = allFields.filter(
+    (f) => f.id !== field.id && !['divider', 'heading'].includes(f.type),
+  );
+  const conditionField = field.visibilityCondition
+    ? allFields.find((f) => f.id === field.visibilityCondition!.fieldId)
+    : null;
 
   return (
     <div className="space-y-5">
@@ -163,19 +175,39 @@ export function FieldConfigPanel({ field, allFields, onUpdate }: FieldConfigPane
           <Label className="text-xs">Ancho</Label>
           <Select
             value={field.width}
-            onValueChange={(value: 'full' | 'half') =>
-              onUpdate(field.id, { width: value })
+            onValueChange={(value: string) =>
+              onUpdate(field.id, { width: value as FieldWidth })
             }
           >
             <SelectTrigger className="h-8 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="full">Completo (100%)</SelectItem>
-              <SelectItem value="half">Mitad (50%)</SelectItem>
+              {(Object.entries(WIDTH_LABELS) as [FieldWidth, string][]).map(
+                ([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ),
+              )}
             </SelectContent>
           </Select>
         </div>
+
+        {/* Default value */}
+        {hasDefaultValue && (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Valor por defecto</Label>
+            <Input
+              value={field.defaultValue ?? ''}
+              onChange={(e) =>
+                onUpdate(field.id, { defaultValue: e.target.value || undefined })
+              }
+              placeholder="Valor inicial del campo..."
+              className="h-8 text-sm"
+            />
+          </div>
+        )}
 
         {/* ── Text/email/phone/url specific ── */}
         {isInputType && (
@@ -346,6 +378,63 @@ export function FieldConfigPanel({ field, allFields, onUpdate }: FieldConfigPane
           </>
         )}
 
+        {/* ── Rating specific ── */}
+        {field.type === 'rating' && (
+          <>
+            <Separator />
+            <div className="space-y-1.5">
+              <Label className="text-xs">Estrellas maximas</Label>
+              <Input
+                type="number"
+                value={field.ratingMax ?? 5}
+                onChange={(e) =>
+                  onUpdate(field.id, {
+                    ratingMax: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+                placeholder="5"
+                className="h-8 text-sm"
+                min={3}
+                max={10}
+              />
+            </div>
+          </>
+        )}
+
+        {/* ── Pattern validation ── */}
+        {hasPatternValidation && (
+          <>
+            <Separator />
+            <div className="space-y-1.5">
+              <Label className="text-xs">Patron (regex)</Label>
+              <Input
+                value={field.pattern ?? ''}
+                onChange={(e) =>
+                  onUpdate(field.id, { pattern: e.target.value || undefined })
+                }
+                placeholder="^[A-Z]{3}-\d+$"
+                className="h-8 text-sm font-mono"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Expresion regular para validar el valor
+              </p>
+            </div>
+            {field.pattern && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Mensaje de error</Label>
+                <Input
+                  value={field.patternMessage ?? ''}
+                  onChange={(e) =>
+                    onUpdate(field.id, { patternMessage: e.target.value || undefined })
+                  }
+                  placeholder="Formato invalido"
+                  className="h-8 text-sm"
+                />
+              </div>
+            )}
+          </>
+        )}
+
         {/* ── Select / Radio: Searchable toggle (select only) ── */}
         {field.type === 'select' && (
           <>
@@ -398,6 +487,19 @@ export function FieldConfigPanel({ field, allFields, onUpdate }: FieldConfigPane
               field={field}
               availableParents={availableParents}
               parentField={parentField ?? null}
+              onUpdate={onUpdate}
+            />
+          </>
+        )}
+
+        {/* ── Visibility condition ── */}
+        {!isLayoutOnly && (
+          <>
+            <Separator />
+            <VisibilityConditionEditor
+              field={field}
+              availableFields={availableConditionFields}
+              conditionField={conditionField ?? null}
               onUpdate={onUpdate}
             />
           </>
@@ -772,6 +874,139 @@ function OptionsEditor({
       {options.length === 0 && (
         <p className="text-[11px] text-muted-foreground">
           Agrega al menos una opcion para el campo de seleccion
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Visibility Condition Editor ─────────────────────────────────────────────
+
+const OPERATOR_LABELS: Record<VisibilityOperator, string> = {
+  equals: 'Es igual a',
+  not_equals: 'No es igual a',
+  contains: 'Contiene',
+  not_empty: 'No esta vacio',
+  is_empty: 'Esta vacio',
+};
+
+const OPERATORS_WITH_VALUE: VisibilityOperator[] = ['equals', 'not_equals', 'contains'];
+
+function VisibilityConditionEditor({
+  field,
+  availableFields,
+  conditionField,
+  onUpdate,
+}: {
+  field: FormField;
+  availableFields: FormField[];
+  conditionField: FormField | null;
+  onUpdate: (fieldId: string, updates: Partial<FormField>) => void;
+}) {
+  const condition = field.visibilityCondition;
+
+  const handleFieldChange = (fieldId: string) => {
+    if (fieldId === '__none__') {
+      onUpdate(field.id, { visibilityCondition: undefined });
+    } else {
+      onUpdate(field.id, {
+        visibilityCondition: {
+          fieldId,
+          operator: 'not_empty',
+        },
+      });
+    }
+  };
+
+  const handleOperatorChange = (operator: string) => {
+    if (!condition) return;
+    onUpdate(field.id, {
+      visibilityCondition: {
+        ...condition,
+        operator: operator as VisibilityOperator,
+        value: OPERATORS_WITH_VALUE.includes(operator as VisibilityOperator)
+          ? condition.value
+          : undefined,
+      },
+    });
+  };
+
+  const handleValueChange = (value: string) => {
+    if (!condition) return;
+    onUpdate(field.id, {
+      visibilityCondition: {
+        ...condition,
+        value: value || undefined,
+      },
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-1.5">
+        <Info className="size-3.5 text-muted-foreground" />
+        <Label className="text-xs">Visibilidad condicional</Label>
+      </div>
+
+      <Select
+        value={condition?.fieldId ?? '__none__'}
+        onValueChange={handleFieldChange}
+      >
+        <SelectTrigger className="h-8 text-sm">
+          <SelectValue placeholder="Siempre visible" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__none__">Siempre visible</SelectItem>
+          {availableFields.map((f) => (
+            <SelectItem key={f.id} value={f.id}>
+              {f.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {condition && (
+        <>
+          <Select
+            value={condition.operator}
+            onValueChange={handleOperatorChange}
+          >
+            <SelectTrigger className="h-8 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.entries(OPERATOR_LABELS) as [VisibilityOperator, string][]).map(
+                ([op, label]) => (
+                  <SelectItem key={op} value={op}>
+                    {label}
+                  </SelectItem>
+                ),
+              )}
+            </SelectContent>
+          </Select>
+
+          {OPERATORS_WITH_VALUE.includes(condition.operator) && (
+            <Input
+              value={condition.value ?? ''}
+              onChange={(e) => handleValueChange(e.target.value)}
+              placeholder="Valor..."
+              className="h-8 text-sm"
+            />
+          )}
+
+          {conditionField && (
+            <p className="text-[11px] text-muted-foreground">
+              Este campo solo se mostrara cuando &quot;{conditionField.label}&quot;{' '}
+              {OPERATOR_LABELS[condition.operator].toLowerCase()}
+              {condition.value ? ` "${condition.value}"` : ''}
+            </p>
+          )}
+        </>
+      )}
+
+      {availableFields.length === 0 && !condition && (
+        <p className="text-[11px] text-muted-foreground">
+          Agrega otros campos al formulario para poder configurar condiciones
         </p>
       )}
     </div>

@@ -16,13 +16,14 @@ interface FormCanvasProps {
   selectedFieldId: string | null;
   onSelectField: (fieldId: string) => void;
   onRemoveField: (fieldId: string) => void;
+  onDuplicateField: (fieldId: string) => void;
   activeId: string | null;
   overId: string | null;
 }
 
 function DropIndicator() {
   return (
-    <div className="col-span-2 flex items-center gap-1.5 py-0.5 animate-in fade-in duration-150">
+    <div className="col-span-12 flex items-center gap-1.5 py-0.5 animate-in fade-in duration-150">
       <div className="size-1.5 rounded-full bg-primary shrink-0" />
       <div className="flex-1 h-0.5 bg-primary rounded-full" />
       <div className="size-1.5 rounded-full bg-primary shrink-0" />
@@ -35,6 +36,7 @@ export function FormCanvas({
   selectedFieldId,
   onSelectField,
   onRemoveField,
+  onDuplicateField,
   activeId,
   overId,
 }: FormCanvasProps) {
@@ -86,7 +88,7 @@ export function FormCanvas({
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-12 gap-3">
               {fields.map((field) => {
                 const parentLabel = field.dependsOn
                   ? fields.find((f) => f.id === field.dependsOn)?.label
@@ -106,6 +108,7 @@ export function FormCanvas({
                       isSelected={selectedFieldId === field.id}
                       onSelect={() => onSelectField(field.id)}
                       onRemove={() => onRemoveField(field.id)}
+                      onDuplicate={() => onDuplicateField(field.id)}
                       parentFieldLabel={parentLabel}
                       isDropTarget={isTarget && field.id !== activeId}
                     />

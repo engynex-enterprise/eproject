@@ -13,7 +13,38 @@ export type FieldType =
   | 'url'
   | 'time'
   | 'radio'
-  | 'heading';
+  | 'heading'
+  | 'divider'
+  | 'hidden'
+  | 'rating';
+
+export type FieldWidth = 'quarter' | 'third' | 'half' | 'two-thirds' | 'three-quarters' | 'full';
+
+export const WIDTH_COL_SPAN: Record<FieldWidth, string> = {
+  quarter: 'col-span-3',
+  third: 'col-span-4',
+  half: 'col-span-6',
+  'two-thirds': 'col-span-8',
+  'three-quarters': 'col-span-9',
+  full: 'col-span-12',
+};
+
+export const WIDTH_LABELS: Record<FieldWidth, string> = {
+  quarter: '25%',
+  third: '33%',
+  half: '50%',
+  'two-thirds': '66%',
+  'three-quarters': '75%',
+  full: '100%',
+};
+
+export type VisibilityOperator = 'equals' | 'not_equals' | 'contains' | 'not_empty' | 'is_empty';
+
+export interface VisibilityCondition {
+  fieldId: string;
+  operator: VisibilityOperator;
+  value?: string;
+}
 
 // ─── Data Source Types ───────────────────────────────────────────────────────
 
@@ -84,7 +115,17 @@ export interface FormField {
   dependsOn?: string;
   /** Options grouped by parent value: { "España": ["Madrid", "Barcelona"], "México": ["CDMX", "Monterrey"] } */
   conditionalOptions?: Record<string, string[]>;
-  width: 'full' | 'half';
+  width: FieldWidth;
+  /** Pre-fill value for the field */
+  defaultValue?: string;
+  /** Regex pattern for validation */
+  pattern?: string;
+  /** Custom error message when pattern fails */
+  patternMessage?: string;
+  /** Max stars for rating field (default 5) */
+  ratingMax?: number;
+  /** Show/hide this field based on another field's value */
+  visibilityCondition?: VisibilityCondition;
   /** Enable search/filter in select dropdowns */
   searchable?: boolean;
   /** Help text shown below the field */
@@ -137,6 +178,9 @@ export const FIELD_TYPES: FieldTypeMeta[] = [
   { type: 'url', label: 'URL', icon: 'Link', defaultLabel: 'Enlace', defaultPlaceholder: 'https://...' },
   { type: 'file', label: 'Archivo', icon: 'Paperclip', defaultLabel: 'Adjuntar archivo', defaultPlaceholder: '' },
   { type: 'heading', label: 'Encabezado', icon: 'Heading', defaultLabel: 'Seccion', defaultPlaceholder: '' },
+  { type: 'divider', label: 'Separador', icon: 'Minus', defaultLabel: '', defaultPlaceholder: '' },
+  { type: 'hidden', label: 'Oculto', icon: 'EyeOff', defaultLabel: 'Campo oculto', defaultPlaceholder: '' },
+  { type: 'rating', label: 'Valoracion', icon: 'Star', defaultLabel: 'Valoracion', defaultPlaceholder: '' },
 ];
 
 // ─── localStorage helpers ────────────────────────────────────────────────────

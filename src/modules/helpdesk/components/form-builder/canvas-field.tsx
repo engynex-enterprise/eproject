@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   GripVertical,
   Trash2,
+  Copy,
   Type,
   Mail,
   AlignLeft,
@@ -25,8 +26,13 @@ import {
   Database,
   FileText,
   Braces,
+  Minus,
+  EyeOff,
+  Star,
+  Eye,
 } from 'lucide-react';
 import type { FormField, FieldType } from '../../types/form-config';
+import { WIDTH_COL_SPAN, WIDTH_LABELS } from '../../types/form-config';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -45,6 +51,9 @@ export const ICON_MAP: Record<FieldType, React.ElementType> = {
   time: Clock,
   radio: CircleDot,
   heading: Heading,
+  divider: Minus,
+  hidden: EyeOff,
+  rating: Star,
 };
 
 const TYPE_LABELS: Record<FieldType, string> = {
@@ -61,6 +70,9 @@ const TYPE_LABELS: Record<FieldType, string> = {
   time: 'Hora',
   radio: 'Opciones',
   heading: 'Encabezado',
+  divider: 'Separador',
+  hidden: 'Oculto',
+  rating: 'Valoracion',
 };
 
 interface CanvasFieldProps {
@@ -68,6 +80,7 @@ interface CanvasFieldProps {
   isSelected: boolean;
   onSelect: () => void;
   onRemove: () => void;
+  onDuplicate?: () => void;
   isDragOverlay?: boolean;
   parentFieldLabel?: string;
   isDropTarget?: boolean;
@@ -78,6 +91,7 @@ export function CanvasField({
   isSelected,
   onSelect,
   onRemove,
+  onDuplicate,
   isDragOverlay,
   parentFieldLabel,
   isDropTarget,
@@ -115,7 +129,7 @@ export function CanvasField({
         isDragging && 'opacity-40',
         isDragOverlay && 'rotate-1 shadow-lg',
         isDropTarget && !isDragging && 'ring-1 ring-primary/30 bg-primary/[0.03]',
-        field.width === 'half' ? 'col-span-1' : 'col-span-2',
+        WIDTH_COL_SPAN[field.width],
       )}
       onClick={onSelect}
     >
@@ -150,9 +164,14 @@ export function CanvasField({
           <Badge variant="secondary" className="text-[10px] font-normal">
             {TYPE_LABELS[field.type]}
           </Badge>
-          {field.width === 'half' && (
+          {field.width !== 'full' && (
             <Badge variant="outline" className="text-[10px] font-normal">
-              50%
+              {WIDTH_LABELS[field.width]}
+            </Badge>
+          )}
+          {field.visibilityCondition && (
+            <Badge variant="outline" className="text-[10px] font-normal gap-0.5">
+              <Eye className="size-2.5 text-violet-500" />
             </Badge>
           )}
           {field.searchable && (
@@ -189,6 +208,19 @@ export function CanvasField({
               <Link2 className="size-2.5" />
               {parentFieldLabel}
             </Badge>
+          )}
+          {onDuplicate && (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="size-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDuplicate();
+              }}
+            >
+              <Copy className="size-3.5" />
+            </Button>
           )}
           <Button
             variant="ghost"
@@ -334,6 +366,25 @@ function FieldPreview({ field }: { field: FormField }) {
           <div className="mt-2 border-b" />
         </div>
       );
+    case 'divider':
+      return <div className="border-t my-1" />;
+    case 'hidden':
+      return (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground italic">
+          <EyeOff className="size-3" />
+          {field.defaultValue ? `Valor: ${field.defaultValue}` : 'Sin valor por defecto'}
+        </div>
+      );
+    case 'rating': {
+      const max = field.ratingMax ?? 5;
+      return (
+        <div className="flex items-center gap-0.5">
+          {Array.from({ length: max }, (_, i) => (
+            <Star key={i} className="size-4 text-muted-foreground/40" />
+          ))}
+        </div>
+      );
+    }
     default:
       return (
         <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
