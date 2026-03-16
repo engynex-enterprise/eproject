@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Download, FileText, Settings } from 'lucide-react';
+import { Plus, Download, Settings, SendHorizontal, Headphones } from 'lucide-react';
 import { sileo } from 'sileo';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/shared/lib/api-client';
 import type { Issue, PaginatedResponse } from '@/shared/types';
-import { useAuthStore } from '@/shared/stores/auth.store';
-import { hasFormConfig } from '@/modules/helpdesk/types/form-config';
+import { MOCK_SENT_TICKETS, MOCK_AGENT_TICKETS } from '@/modules/helpdesk/data/mock-tickets';
 import { HelpdeskDashboard } from '@/modules/helpdesk/components/helpdesk-dashboard';
 import { HelpdeskToolbar } from '@/modules/helpdesk/components/helpdesk-toolbar';
 import { TicketList } from '@/modules/helpdesk/components/ticket-list';
@@ -21,6 +21,8 @@ import type {
 } from '@/modules/helpdesk/components/helpdesk-toolbar';
 
 const VIEW_MODE_KEY = 'eproject:helpdesk-view-mode';
+
+type TabValue = 'emisor' | 'receptor';
 
 function loadViewMode(): ViewMode {
   if (typeof window === 'undefined') return 'table';
@@ -44,31 +46,31 @@ function useTickets(filter: TicketFilter, search: string) {
   });
 }
 
-export default function HelpdeskPage() {
-  const { currentOrgId } = useAuthStore();
-  const orgId = currentOrgId ?? 0;
+const MOCK_BY_FILTER: Record<'reported_by_me' | 'assigned_to_me', Issue[]> = {
+  reported_by_me: MOCK_SENT_TICKETS,
+  assigned_to_me: MOCK_AGENT_TICKETS,
+};
 
-  // Check if form config exists (client-only)
-  const [formExists, setFormExists] = useState<boolean | null>(null);
-  useEffect(() => {
-    setFormExists(hasFormConfig(orgId));
-  }, [orgId]);
-
-  // Filters & view
+function TicketPanel({
+  ticketFilter,
+  viewMode,
+  onViewModeChange,
+}: {
+  ticketFilter: 'reported_by_me' | 'assigned_to_me';
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
+}) {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<TicketSortBy>('recent');
-  const [ticketFilter, setTicketFilter] = useState<TicketFilter>('all');
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
-  const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
-
-  // Selection
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
-  // Data
-  const { data: ticketsResponse, isLoading } = useTickets(ticketFilter, search);
-  const tickets = ticketsResponse?.data ?? [];
+  const { data: ticketsResponse, isLoading, isError } = useTickets(ticketFilter, search);
+  const apiTickets = ticketsResponse?.data ?? [];
+  const tickets = !isLoading && (isError || apiTickets.length === 0)
+    ? MOCK_BY_FILTER[ticketFilter]
+    : apiTickets;
 
-  // Filtered count for toolbar
   const filteredCount = useMemo(() => {
     let result = tickets;
     if (search) {
@@ -82,12 +84,6 @@ export default function HelpdeskPage() {
     }
     return result.length;
   }, [tickets, search, priorityFilter]);
-
-  // Handlers
-  const handleViewModeChange = useCallback((mode: ViewMode) => {
-    setViewMode(mode);
-    localStorage.setItem(VIEW_MODE_KEY, mode);
-  }, []);
 
   const handleToggleSelect = useCallback((ticketId: number) => {
     setSelectedIds((prev) => {
@@ -106,7 +102,6 @@ export default function HelpdeskPage() {
     });
   }, []);
 
-  // Export
   const handleExport = useCallback(() => {
     const csv = [
       ['Clave', 'Titulo', 'Estado', 'Prioridad', 'Asignado', 'Creado', 'Actualizado'].join(','),
@@ -141,34 +136,65 @@ export default function HelpdeskPage() {
     });
   }, [tickets]);
 
-  // ── Empty state: no form configured ──────────────────────────────────────
-  if (formExists === false) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-4 text-center max-w-md">
-          <div className="flex size-16 items-center justify-center rounded-full bg-muted">
-            <FileText className="size-7 text-muted-foreground" />
+  return (
+    <div className="flex flex-col gap-4">
+      <HelpdeskDashboard tickets={tickets} isLoading={isLoading} />
+
+      <HelpdeskToolbar
+        search={search}
+        onSearchChange={setSearch}
+        sortBy={sortBy}
+        onSortByChange={setSortBy}
+        ticketFilter={ticketFilter}
+        onTicketFilterChange={() => {}}
+        priorityFilter={priorityFilter}
+        onPriorityFilterChange={setPriorityFilter}
+        viewMode={viewMode}
+        onViewModeChange={onViewModeChange}
+        totalCount={tickets.length}
+        filteredCount={filteredCount}
+        onExport={handleExport}
+        showTicketFilter={false}
+      />
+
+      <TicketList
+        tickets={tickets}
+        isLoading={isLoading}
+        viewMode={viewMode}
+        search={search}
+        sortBy={sortBy}
+        ticketFilter={ticketFilter}
+        priorityFilter={priorityFilter}
+        selectedIds={selectedIds}
+        onToggleSelect={handleToggleSelect}
+        onToggleSelectAll={handleToggleSelectAll}
+      />
+
+      {ticketsResponse?.meta && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>
+            Mostrando {tickets.length} de {ticketsResponse.meta.total} tickets
+          </span>
+          <div className="flex items-center gap-2">
+            <span>
+              Pagina {ticketsResponse.meta.page} de{' '}
+              {ticketsResponse.meta.totalPages}
+            </span>
           </div>
-          <div>
-            <h2 className="text-lg font-semibold">
-              No hay formulario configurado
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Configura tu formulario publico para recibir tickets de usuarios
-              externos. Arrastra y suelta campos para personalizar el
-              formulario a las necesidades de tu empresa.
-            </p>
-          </div>
-          <Link href="/organization/helpdesk">
-            <Button>
-              <Settings className="size-4" />
-              Crear formulario
-            </Button>
-          </Link>
         </div>
-      </div>
-    );
-  }
+      )}
+    </div>
+  );
+}
+
+export default function HelpdeskPage() {
+  const [activeTab, setActiveTab] = useState<TabValue>('emisor');
+  const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
+
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem(VIEW_MODE_KEY, mode);
+  }, []);
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
@@ -194,54 +220,39 @@ export default function HelpdeskPage() {
         </div>
       </div>
 
-      {/* Dashboard stats */}
-      <HelpdeskDashboard tickets={tickets} isLoading={isLoading} />
+      {/* Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as TabValue)}
+        className="flex flex-col gap-4"
+      >
+        <TabsList variant="line" className="w-fit">
+          <TabsTrigger value="emisor" className="gap-2 px-4">
+            <SendHorizontal className="size-4" />
+            Mis tickets enviados
+          </TabsTrigger>
+          <TabsTrigger value="receptor" className="gap-2 px-4">
+            <Headphones className="size-4" />
+            Tickets como agente
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Toolbar */}
-      <HelpdeskToolbar
-        search={search}
-        onSearchChange={setSearch}
-        sortBy={sortBy}
-        onSortByChange={setSortBy}
-        ticketFilter={ticketFilter}
-        onTicketFilterChange={setTicketFilter}
-        priorityFilter={priorityFilter}
-        onPriorityFilterChange={setPriorityFilter}
-        viewMode={viewMode}
-        onViewModeChange={handleViewModeChange}
-        totalCount={tickets.length}
-        filteredCount={filteredCount}
-        onExport={handleExport}
-      />
+        <TabsContent value="emisor">
+          <TicketPanel
+            ticketFilter="reported_by_me"
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
+          />
+        </TabsContent>
 
-      {/* Ticket list */}
-      <TicketList
-        tickets={tickets}
-        isLoading={isLoading}
-        viewMode={viewMode}
-        search={search}
-        sortBy={sortBy}
-        ticketFilter={ticketFilter}
-        priorityFilter={priorityFilter}
-        selectedIds={selectedIds}
-        onToggleSelect={handleToggleSelect}
-        onToggleSelectAll={handleToggleSelectAll}
-      />
-
-      {/* Pagination info */}
-      {ticketsResponse?.meta && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>
-            Mostrando {tickets.length} de {ticketsResponse.meta.total} tickets
-          </span>
-          <div className="flex items-center gap-2">
-            <span>
-              Pagina {ticketsResponse.meta.page} de{' '}
-              {ticketsResponse.meta.totalPages}
-            </span>
-          </div>
-        </div>
-      )}
+        <TabsContent value="receptor">
+          <TicketPanel
+            ticketFilter="assigned_to_me"
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -1,0 +1,327 @@
+import type { Issue } from '@/shared/types';
+
+const makeUser = (id: number, firstName: string, lastName: string, avatarUrl?: string) => ({
+  id,
+  email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@empresa.com`,
+  firstName,
+  lastName,
+  phone: null,
+  avatarUrl: avatarUrl ?? null,
+  isEmailVerified: true,
+  provider: 'local' as const,
+  language: 'es',
+  theme: 'system',
+  accentColor: '#6366f1',
+  timezone: 'Europe/Madrid',
+  isActive: true,
+  createdAt: '2025-01-10T08:00:00Z',
+  updatedAt: '2025-01-10T08:00:00Z',
+});
+
+const makeStatus = (id: number, name: string, type: 'todo' | 'in_progress' | 'done' | 'cancelled', color: string) => ({
+  id,
+  name,
+  description: null,
+  projectId: 1,
+  statusGroupId: id,
+  statusGroup: { id, name, type, color },
+  color,
+  order: id,
+  createdAt: '2025-01-01T00:00:00Z',
+  updatedAt: '2025-01-01T00:00:00Z',
+});
+
+const makePriority = (id: number, name: string, level: 'highest' | 'high' | 'medium' | 'low' | 'lowest', color: string) => ({
+  id,
+  name,
+  level,
+  icon: level,
+  color,
+  order: id,
+});
+
+const makeIssueType = () => ({
+  id: 1,
+  name: 'Ticket',
+  description: null,
+  icon: 'ticket',
+  color: '#6366f1',
+  projectId: 1,
+  isSubtask: false,
+  createdAt: '2025-01-01T00:00:00Z',
+  updatedAt: '2025-01-01T00:00:00Z',
+});
+
+// ─── Usuarios de ejemplo ──────────────────────────────────────────────────────
+
+const ana = makeUser(1, 'Ana', 'García');
+const carlos = makeUser(2, 'Carlos', 'Martínez');
+const sofia = makeUser(3, 'Sofía', 'López');
+const miguel = makeUser(4, 'Miguel', 'Torres');
+const laura = makeUser(5, 'Laura', 'Fernández');
+
+// ─── Statuses ─────────────────────────────────────────────────────────────────
+
+const statusPendiente = makeStatus(1, 'Pendiente', 'todo', '#94a3b8');
+const statusEnRevision = makeStatus(2, 'En revisión', 'in_progress', '#3b82f6');
+const statusEnProgreso = makeStatus(3, 'En progreso', 'in_progress', '#8b5cf6');
+const statusResuelto = makeStatus(4, 'Resuelto', 'done', '#22c55e');
+const statusCerrado = makeStatus(5, 'Cerrado', 'done', '#10b981');
+
+// ─── Priorities ──────────────────────────────────────────────────────────────
+
+const prioCritica = makePriority(1, 'Crítica', 'highest', '#ef4444');
+const prioAlta = makePriority(2, 'Alta', 'high', '#f97316');
+const prioMedia = makePriority(3, 'Media', 'medium', '#eab308');
+const prioBaja = makePriority(4, 'Baja', 'low', '#3b82f6');
+
+const issueType = makeIssueType();
+
+const base = {
+  projectId: 1,
+  issueTypeId: 1,
+  issueType,
+  parentId: null,
+  sprintId: null,
+  sprint: null,
+  versionId: null,
+  version: null,
+  spaceId: null,
+  space: null,
+  storyPoints: null,
+  startDate: null,
+  dueDate: null,
+  order: 0,
+  tags: [],
+};
+
+// ─── Tickets enviados (como Emisor) ──────────────────────────────────────────
+
+export const MOCK_SENT_TICKETS: Issue[] = [
+  {
+    ...base,
+    id: 101,
+    issueKey: 'HD-101',
+    title: 'Error al generar factura en módulo de ventas',
+    description: 'Al intentar generar una factura con más de 10 líneas de producto el sistema devuelve un error 500.',
+    statusId: 2,
+    status: statusEnRevision,
+    priorityId: 1,
+    priority: prioCritica,
+    reporterId: 1,
+    reporter: ana,
+    assigneeId: 4,
+    assignee: miguel,
+    createdAt: '2026-03-10T09:15:00Z',
+    updatedAt: '2026-03-14T11:30:00Z',
+  },
+  {
+    ...base,
+    id: 102,
+    issueKey: 'HD-102',
+    title: 'Solicitud de acceso al módulo de RRHH',
+    description: 'Necesito acceso de lectura al módulo de recursos humanos para poder consultar datos del equipo.',
+    statusId: 3,
+    status: statusEnProgreso,
+    priorityId: 3,
+    priority: prioMedia,
+    reporterId: 1,
+    reporter: ana,
+    assigneeId: 5,
+    assignee: laura,
+    createdAt: '2026-03-08T14:00:00Z',
+    updatedAt: '2026-03-12T16:45:00Z',
+  },
+  {
+    ...base,
+    id: 103,
+    issueKey: 'HD-103',
+    title: 'El dashboard de reportes no carga correctamente',
+    description: 'Los gráficos del dashboard de reportes mensuales aparecen en blanco. El problema ocurre en Chrome y Firefox.',
+    statusId: 1,
+    status: statusPendiente,
+    priorityId: 2,
+    priority: prioAlta,
+    reporterId: 1,
+    reporter: ana,
+    assigneeId: null,
+    assignee: null,
+    createdAt: '2026-03-15T08:30:00Z',
+    updatedAt: '2026-03-15T08:30:00Z',
+  },
+  {
+    ...base,
+    id: 104,
+    issueKey: 'HD-104',
+    title: 'Cambio de contraseña no envía correo de confirmación',
+    description: 'Cuando un usuario solicita cambiar su contraseña, el correo de verificación no llega. Se ha probado con varios dominios.',
+    statusId: 4,
+    status: statusResuelto,
+    priorityId: 2,
+    priority: prioAlta,
+    reporterId: 1,
+    reporter: ana,
+    assigneeId: 2,
+    assignee: carlos,
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-05T17:20:00Z',
+  },
+  {
+    ...base,
+    id: 105,
+    issueKey: 'HD-105',
+    title: 'Mejorar rendimiento de búsqueda en catálogo de productos',
+    description: 'La búsqueda en el catálogo tarda más de 8 segundos cuando hay más de 5000 productos. Se necesita paginación o indexación.',
+    statusId: 1,
+    status: statusPendiente,
+    priorityId: 3,
+    priority: prioMedia,
+    reporterId: 1,
+    reporter: ana,
+    assigneeId: null,
+    assignee: null,
+    createdAt: '2026-03-13T11:00:00Z',
+    updatedAt: '2026-03-13T11:00:00Z',
+  },
+  {
+    ...base,
+    id: 106,
+    issueKey: 'HD-106',
+    title: 'Exportación a Excel falla con caracteres especiales',
+    description: 'Al exportar reportes que contienen tildes o caracteres especiales (ñ, €) el archivo Excel aparece con caracteres extraños.',
+    statusId: 5,
+    status: statusCerrado,
+    priorityId: 4,
+    priority: prioBaja,
+    reporterId: 1,
+    reporter: ana,
+    assigneeId: 4,
+    assignee: miguel,
+    createdAt: '2026-02-20T09:00:00Z',
+    updatedAt: '2026-02-28T12:00:00Z',
+  },
+];
+
+// ─── Tickets asignados (como Receptor/Agente) ─────────────────────────────────
+
+export const MOCK_AGENT_TICKETS: Issue[] = [
+  {
+    ...base,
+    id: 201,
+    issueKey: 'HD-201',
+    title: 'Integración con Stripe devuelve error 422 en producción',
+    description: 'Los pagos con tarjeta fallan en el entorno de producción. En staging funciona correctamente. Se adjuntan logs.',
+    statusId: 3,
+    status: statusEnProgreso,
+    priorityId: 1,
+    priority: prioCritica,
+    reporterId: 2,
+    reporter: carlos,
+    assigneeId: 1,
+    assignee: ana,
+    createdAt: '2026-03-14T07:00:00Z',
+    updatedAt: '2026-03-15T10:15:00Z',
+  },
+  {
+    ...base,
+    id: 202,
+    issueKey: 'HD-202',
+    title: 'Usuarios no pueden iniciar sesión con SSO de Google',
+    description: 'Desde ayer por la tarde los usuarios que usan Google como proveedor de autenticación reciben un error de callback.',
+    statusId: 2,
+    status: statusEnRevision,
+    priorityId: 2,
+    priority: prioAlta,
+    reporterId: 3,
+    reporter: sofia,
+    assigneeId: 1,
+    assignee: ana,
+    createdAt: '2026-03-13T15:30:00Z',
+    updatedAt: '2026-03-14T09:00:00Z',
+  },
+  {
+    ...base,
+    id: 203,
+    issueKey: 'HD-203',
+    title: 'Notificaciones push no llegan en iOS 17',
+    description: 'Los usuarios con iPhone que actualizaron a iOS 17 reportan que no reciben notificaciones push de la aplicación.',
+    statusId: 1,
+    status: statusPendiente,
+    priorityId: 2,
+    priority: prioAlta,
+    reporterId: 5,
+    reporter: laura,
+    assigneeId: 1,
+    assignee: ana,
+    createdAt: '2026-03-12T11:00:00Z',
+    updatedAt: '2026-03-12T11:00:00Z',
+  },
+  {
+    ...base,
+    id: 204,
+    issueKey: 'HD-204',
+    title: 'Actualizar documentación del API de webhooks',
+    description: 'La documentación de webhooks está desactualizada y no incluye los nuevos eventos añadidos en la versión 2.4.',
+    statusId: 3,
+    status: statusEnProgreso,
+    priorityId: 3,
+    priority: prioMedia,
+    reporterId: 2,
+    reporter: carlos,
+    assigneeId: 1,
+    assignee: ana,
+    createdAt: '2026-03-10T13:00:00Z',
+    updatedAt: '2026-03-15T08:00:00Z',
+  },
+  {
+    ...base,
+    id: 205,
+    issueKey: 'HD-205',
+    title: 'Configurar alertas de monitoreo para el servidor de base de datos',
+    description: 'Se necesita configurar alertas en Datadog cuando el uso de CPU o memoria de la BD supere el 80%.',
+    statusId: 4,
+    status: statusResuelto,
+    priorityId: 3,
+    priority: prioMedia,
+    reporterId: 4,
+    reporter: miguel,
+    assigneeId: 1,
+    assignee: ana,
+    createdAt: '2026-03-05T10:00:00Z',
+    updatedAt: '2026-03-09T16:30:00Z',
+  },
+  {
+    ...base,
+    id: 206,
+    issueKey: 'HD-206',
+    title: 'Revisar permisos de roles en el panel de administración',
+    description: 'Algunos usuarios con rol "Editor" pueden acceder a configuraciones que deberían estar restringidas a "Admin".',
+    statusId: 2,
+    status: statusEnRevision,
+    priorityId: 2,
+    priority: prioAlta,
+    reporterId: 3,
+    reporter: sofia,
+    assigneeId: 1,
+    assignee: ana,
+    createdAt: '2026-03-11T09:30:00Z',
+    updatedAt: '2026-03-13T14:00:00Z',
+  },
+  {
+    ...base,
+    id: 207,
+    issueKey: 'HD-207',
+    title: 'Migración de datos de clientes al nuevo esquema',
+    description: 'Se requiere script de migración para mover los datos de clientes legacy al nuevo esquema de base de datos v3.',
+    statusId: 1,
+    status: statusPendiente,
+    priorityId: 4,
+    priority: prioBaja,
+    reporterId: 5,
+    reporter: laura,
+    assigneeId: 1,
+    assignee: ana,
+    createdAt: '2026-03-09T08:00:00Z',
+    updatedAt: '2026-03-09T08:00:00Z',
+  },
+];

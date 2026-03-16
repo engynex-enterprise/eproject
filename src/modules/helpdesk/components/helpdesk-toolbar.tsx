@@ -62,6 +62,7 @@ interface HelpdeskToolbarProps {
   totalCount: number;
   filteredCount: number;
   onExport?: () => void;
+  showTicketFilter?: boolean;
 }
 
 const SORT_LABELS: Record<TicketSortBy, string> = {
@@ -100,8 +101,9 @@ export function HelpdeskToolbar({
   totalCount,
   filteredCount,
   onExport,
+  showTicketFilter = true,
 }: HelpdeskToolbarProps) {
-  const hasActiveFilters = ticketFilter !== 'all' || priorityFilter !== 'all' || search.length > 0;
+  const hasActiveFilters = (showTicketFilter && ticketFilter !== 'all') || priorityFilter !== 'all' || search.length > 0;
 
   const clearAllFilters = () => {
     onSearchChange('');
@@ -162,22 +164,24 @@ export function HelpdeskToolbar({
         </TooltipProvider>
 
         {/* Ticket filter pills */}
-        <div className="flex items-center rounded-lg border bg-muted/40 p-0.5">
-          {(Object.entries(FILTER_LABELS) as [TicketFilter, string][]).map(([value, label]) => (
-            <button
-              key={value}
-              onClick={() => onTicketFilterChange(value)}
-              className={cn(
-                'rounded-md px-3 py-1 text-xs font-medium transition-colors',
-                ticketFilter === value
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {showTicketFilter && (
+          <div className="flex items-center rounded-lg border bg-muted/40 p-0.5">
+            {(Object.entries(FILTER_LABELS) as [TicketFilter, string][]).map(([value, label]) => (
+              <button
+                key={value}
+                onClick={() => onTicketFilterChange(value)}
+                className={cn(
+                  'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                  ticketFilter === value
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Priority filter dropdown */}
         <DropdownMenu>
@@ -286,7 +290,7 @@ export function HelpdeskToolbar({
             </Badge>
           )}
 
-          {ticketFilter !== 'all' && (
+          {showTicketFilter && ticketFilter !== 'all' && (
             <Badge variant="secondary" className="gap-1 pr-1 text-xs font-normal">
               {FILTER_LABELS[ticketFilter]}
               <button
