@@ -38,6 +38,7 @@ interface TicketTableProps {
   selectedIds?: Set<number>;
   onToggleSelect?: (ticketId: number) => void;
   onToggleSelectAll?: (ticketIds: number[]) => void;
+  onTicketClick?: (ticket: Issue) => void;
 }
 
 const priorityColors: Record<string, string> = {
@@ -130,6 +131,7 @@ export function TicketTable({
   selectedIds,
   onToggleSelect,
   onToggleSelectAll,
+  onTicketClick,
 }: TicketTableProps) {
   const [sortCol, setSortCol] = useState<SortColumn>('updated');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -213,13 +215,13 @@ export function TicketTable({
             <TableRow
               key={ticket.id}
               className={cn('cursor-pointer', isSelected && 'bg-muted/50')}
+              onClick={() => onTicketClick?.(ticket)}
             >
               {/* Checkbox */}
-              <TableCell className="pr-0">
+              <TableCell className="pr-0" onClick={(e) => e.stopPropagation()}>
                 <Checkbox
                   checked={isSelected}
                   onCheckedChange={() => onToggleSelect?.(ticket.id)}
-                  onClick={(e) => e.stopPropagation()}
                   aria-label={`Seleccionar ${ticket.title}`}
                 />
               </TableCell>

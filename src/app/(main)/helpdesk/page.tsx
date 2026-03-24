@@ -13,10 +13,15 @@ import { MOCK_SENT_TICKETS, MOCK_AGENT_TICKETS } from '@/modules/helpdesk/data/m
 import { HelpdeskDashboard } from '@/modules/helpdesk/components/helpdesk-dashboard';
 import { HelpdeskToolbar } from '@/modules/helpdesk/components/helpdesk-toolbar';
 import { TicketList } from '@/modules/helpdesk/components/ticket-list';
+import { BulkActionsBar } from '@/modules/helpdesk/components/bulk-actions-bar';
+import { TicketDetailSheet } from '@/modules/helpdesk/components/ticket-detail-sheet';
+import { CreateTicketDialog } from '@/modules/helpdesk/components/create-ticket-dialog';
 import type {
   TicketSortBy,
   TicketFilter,
   PriorityFilter,
+  StatusFilter,
+  DateFilter,
   ViewMode,
 } from '@/modules/helpdesk/components/helpdesk-toolbar';
 
@@ -37,11 +42,7 @@ function useTickets(filter: TicketFilter, search: string) {
       const params: Record<string, string> = {};
       if (filter !== 'all') params.filter = filter;
       if (search) params.search = search;
-      const res = await apiClient.get<PaginatedResponse<Issue>>(
-        '/helpdesk/tickets',
-        params,
-      );
-      return res;
+      return apiClient.get<PaginatedResponse<Issue>>('/helpdesk/tickets', params);
     },
   });
 }
@@ -50,6 +51,30 @@ const MOCK_BY_FILTER: Record<'reported_by_me' | 'assigned_to_me', Issue[]> = {
   reported_by_me: MOCK_SENT_TICKETS,
   assigned_to_me: MOCK_AGENT_TICKETS,
 };
+
+function exportToCSV(tickets: Issue[], filename: string) {
+  const csv = [
+    ['Clave', 'Titulo', 'Estado', 'Prioridad', 'Asignado', 'Creado', 'Actualizado'].join(','),
+    ...tickets.map((t) =>
+      [
+        t.issueKey,
+        `"${t.title}"`,
+        t.status?.name ?? '',
+        t.priority?.name ?? '',
+        t.assignee ? `${t.assignee.firstName} ${t.assignee.lastName}` : '',
+        t.createdAt,
+        t.updatedAt,
+      ].join(','),
+    ),
+  ].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 function TicketPanel({
   ticketFilter,
@@ -63,13 +88,22 @@ function TicketPanel({
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<TicketSortBy>('recent');
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [detailTicket, setDetailTicket] = useState<Issue | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const { data: ticketsResponse, isLoading, isError } = useTickets(ticketFilter, search);
   const apiTickets = ticketsResponse?.data ?? [];
   const tickets = !isLoading && (isError || apiTickets.length === 0)
     ? MOCK_BY_FILTER[ticketFilter]
     : apiTickets;
+
+  const selectedTickets = useMemo(
+    () => tickets.filter((t) => selectedIds.has(t.id)),
+    [tickets, selectedIds],
+  );
 
   const filteredCount = useMemo(() => {
     let result = tickets;
@@ -82,8 +116,30 @@ function TicketPanel({
     if (priorityFilter !== 'all') {
       result = result.filter((t) => t.priority?.level === priorityFilter);
     }
+    if (statusFilter !== 'all') {
+      result = result.filter((t) => t.status?.statusGroup?.type === statusFilter);
+    }
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      result = result.filter((t) => {
+        const date = new Date(t.createdAt);
+        if (dateFilter === 'today') return date >= startOfToday;
+        if (dateFilter === 'this_week') {
+          const d = startOfToday.getDay();
+          const start = new Date(startOfToday);
+          start.setDate(startOfToday.getDate() + (d === 0 ? -6 : 1 - d));
+          return date >= start;
+        }
+        if (dateFilter === 'this_month') return date >= new Date(now.getFullYear(), now.getMonth(), 1);
+        if (dateFilter === 'last_30') {
+          const ago = new Date(now); ago.setDate(now.getDate() - 30); return date >= ago;
+        }
+        return true;
+      });
+    }
     return result.length;
-  }, [tickets, search, priorityFilter]);
+  }, [tickets, search, priorityFilter, statusFilter, dateFilter]);
 
   const handleToggleSelect = useCallback((ticketId: number) => {
     setSelectedIds((prev) => {
@@ -97,44 +153,49 @@ function TicketPanel({
   const handleToggleSelectAll = useCallback((ticketIds: number[]) => {
     setSelectedIds((prev) => {
       const allSelected = ticketIds.every((id) => prev.has(id));
-      if (allSelected) return new Set();
-      return new Set(ticketIds);
+      return allSelected ? new Set() : new Set(ticketIds);
     });
   }, []);
 
-  const handleExport = useCallback(() => {
-    const csv = [
-      ['Clave', 'Titulo', 'Estado', 'Prioridad', 'Asignado', 'Creado', 'Actualizado'].join(','),
-      ...tickets.map((t) =>
-        [
-          t.issueKey,
-          `"${t.title}"`,
-          t.status?.name ?? '',
-          t.priority?.name ?? '',
-          t.assignee ? `${t.assignee.firstName} ${t.assignee.lastName}` : '',
-          t.createdAt,
-          t.updatedAt,
-        ].join(','),
-      ),
-    ].join('\n');
+  const handleTicketClick = useCallback((ticket: Issue) => {
+    setDetailTicket(ticket);
+    setSheetOpen(true);
+  }, []);
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `tickets-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const handleExportAll = useCallback(() => {
+    exportToCSV(tickets, `tickets-${new Date().toISOString().slice(0, 10)}.csv`);
     sileo.success({
       title: 'Tickets exportados',
       icon: <Download className="size-4" />,
-      description: (
-        <span className="text-xs!">
-          Archivo CSV descargado correctamente.
-        </span>
-      ),
+      description: <span className="text-xs!">Archivo CSV descargado.</span>,
     });
   }, [tickets]);
+
+  const handleExportSelected = useCallback(() => {
+    exportToCSV(selectedTickets, `tickets-seleccionados-${new Date().toISOString().slice(0, 10)}.csv`);
+    sileo.success({
+      title: `${selectedTickets.length} ticket${selectedTickets.length > 1 ? 's' : ''} exportados`,
+      icon: <Download className="size-4" />,
+      description: <span className="text-xs!">Archivo CSV descargado.</span>,
+    });
+  }, [selectedTickets]);
+
+  const handleChangeStatus = useCallback((_statusId: number, statusName: string) => {
+    sileo.info({
+      title: 'Estado actualizado',
+      description: <span className="text-xs!">{selectedIds.size} ticket{selectedIds.size > 1 ? 's' : ''} → {statusName}</span>,
+    });
+    setSelectedIds(new Set());
+  }, [selectedIds.size]);
+
+  const handleChangePriority = useCallback((level: string) => {
+    const labels: Record<string, string> = { highest: 'Crítica', high: 'Alta', medium: 'Media', low: 'Baja', lowest: 'Muy baja' };
+    sileo.info({
+      title: 'Prioridad actualizada',
+      description: <span className="text-xs!">{selectedIds.size} ticket{selectedIds.size > 1 ? 's' : ''} → {labels[level]}</span>,
+    });
+    setSelectedIds(new Set());
+  }, [selectedIds.size]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -149,11 +210,15 @@ function TicketPanel({
         onTicketFilterChange={() => {}}
         priorityFilter={priorityFilter}
         onPriorityFilterChange={setPriorityFilter}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        dateFilter={dateFilter}
+        onDateFilterChange={setDateFilter}
         viewMode={viewMode}
         onViewModeChange={onViewModeChange}
         totalCount={tickets.length}
         filteredCount={filteredCount}
-        onExport={handleExport}
+        onExport={handleExportAll}
         showTicketFilter={false}
       />
 
@@ -165,9 +230,12 @@ function TicketPanel({
         sortBy={sortBy}
         ticketFilter={ticketFilter}
         priorityFilter={priorityFilter}
+        statusFilter={statusFilter}
+        dateFilter={dateFilter}
         selectedIds={selectedIds}
         onToggleSelect={handleToggleSelect}
         onToggleSelectAll={handleToggleSelectAll}
+        onTicketClick={handleTicketClick}
       />
 
       {ticketsResponse?.meta && (
@@ -175,14 +243,28 @@ function TicketPanel({
           <span>
             Mostrando {tickets.length} de {ticketsResponse.meta.total} tickets
           </span>
-          <div className="flex items-center gap-2">
-            <span>
-              Pagina {ticketsResponse.meta.page} de{' '}
-              {ticketsResponse.meta.totalPages}
-            </span>
-          </div>
+          <span>
+            Página {ticketsResponse.meta.page} de {ticketsResponse.meta.totalPages}
+          </span>
         </div>
       )}
+
+      {/* Bulk actions bar */}
+      <BulkActionsBar
+        selectedCount={selectedIds.size}
+        selectedTickets={selectedTickets}
+        onClearSelection={() => setSelectedIds(new Set())}
+        onExportSelected={handleExportSelected}
+        onChangeStatus={handleChangeStatus}
+        onChangePriority={handleChangePriority}
+      />
+
+      {/* Ticket detail sheet */}
+      <TicketDetailSheet
+        ticket={detailTicket}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+      />
     </div>
   );
 }
@@ -190,6 +272,7 @@ function TicketPanel({
 export default function HelpdeskPage() {
   const [activeTab, setActiveTab] = useState<TabValue>('emisor');
   const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
@@ -213,7 +296,7 @@ export default function HelpdeskPage() {
               Configurar formulario
             </Button>
           </Link>
-          <Button>
+          <Button onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />
             Crear ticket
           </Button>
@@ -253,6 +336,12 @@ export default function HelpdeskPage() {
           />
         </TabsContent>
       </Tabs>
+
+      {/* Create ticket dialog */}
+      <CreateTicketDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+      />
     </div>
   );
 }

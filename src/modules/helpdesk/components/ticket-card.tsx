@@ -26,10 +26,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
 interface TicketCardProps {
   ticket: Issue;
+  isSelected?: boolean;
+  onToggleSelect?: (id: number) => void;
+  onClick?: (ticket: Issue) => void;
 }
 
 const priorityColors: Record<string, string> = {
@@ -82,15 +86,36 @@ function formatRelativeDate(dateStr: string): string {
   return `Hace ${Math.floor(diffDays / 30)}m`;
 }
 
-export function TicketCard({ ticket }: TicketCardProps) {
+export function TicketCard({ ticket, isSelected, onToggleSelect, onClick }: TicketCardProps) {
   const statusGroupType = ticket.status?.statusGroup?.type ?? 'todo';
   const borderColor = statusGroupBorderColors[statusGroupType] ?? '#71717a';
 
   return (
     <div
-      className="group relative cursor-pointer overflow-hidden rounded-lg border bg-card transition-all hover:shadow-md"
+      className={cn(
+        'group relative cursor-pointer overflow-hidden rounded-lg border bg-card transition-all hover:shadow-md',
+        isSelected && 'ring-2 ring-primary/50 bg-primary/5',
+      )}
       style={{ borderLeft: `4px solid ${borderColor}` }}
+      onClick={() => onClick?.(ticket)}
     >
+      {/* Checkbox de selección */}
+      <div
+        className={cn(
+          'absolute left-3 top-3 z-10 transition-opacity',
+          isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+        )}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleSelect?.(ticket.id);
+        }}
+      >
+        <Checkbox
+          checked={isSelected ?? false}
+          className="size-4 bg-background shadow-sm"
+          aria-label={`Seleccionar ${ticket.title}`}
+        />
+      </div>
       <div className="space-y-3 p-4">
         {/* Row 1: Icon + Title + Key badge */}
         <div className="flex items-start gap-2">

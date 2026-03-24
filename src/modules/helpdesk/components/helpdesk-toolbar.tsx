@@ -9,8 +9,8 @@ import {
   X,
   CircleDot,
   Download,
-  User,
-  AlertCircle,
+  CheckSquare,
+  Calendar,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -46,6 +46,8 @@ import { cn } from '@/lib/utils';
 export type TicketSortBy = 'recent' | 'priority' | 'status' | 'title';
 export type TicketFilter = 'all' | 'assigned_to_me' | 'reported_by_me';
 export type PriorityFilter = 'all' | 'highest' | 'high' | 'medium' | 'low' | 'lowest';
+export type StatusFilter = 'all' | 'todo' | 'in_progress' | 'done' | 'cancelled';
+export type DateFilter = 'all' | 'today' | 'this_week' | 'this_month' | 'last_30';
 export type ViewMode = 'cards' | 'table';
 
 interface HelpdeskToolbarProps {
@@ -57,6 +59,10 @@ interface HelpdeskToolbarProps {
   onTicketFilterChange: (value: TicketFilter) => void;
   priorityFilter: PriorityFilter;
   onPriorityFilterChange: (value: PriorityFilter) => void;
+  statusFilter: StatusFilter;
+  onStatusFilterChange: (value: StatusFilter) => void;
+  dateFilter: DateFilter;
+  onDateFilterChange: (value: DateFilter) => void;
   viewMode: ViewMode;
   onViewModeChange: (value: ViewMode) => void;
   totalCount: number;
@@ -87,6 +93,22 @@ const PRIORITY_OPTIONS: { value: PriorityFilter; label: string; color: string }[
   { value: 'lowest', label: 'Muy baja', color: '#8993A4' },
 ];
 
+const STATUS_OPTIONS: { value: StatusFilter; label: string; color: string }[] = [
+  { value: 'all', label: 'Todos', color: '' },
+  { value: 'todo', label: 'Pendiente', color: '#94a3b8' },
+  { value: 'in_progress', label: 'En progreso', color: '#3b82f6' },
+  { value: 'done', label: 'Resuelto', color: '#22c55e' },
+  { value: 'cancelled', label: 'Cancelado', color: '#ef4444' },
+];
+
+const DATE_OPTIONS: { value: DateFilter; label: string }[] = [
+  { value: 'all', label: 'Cualquier fecha' },
+  { value: 'today', label: 'Hoy' },
+  { value: 'this_week', label: 'Esta semana' },
+  { value: 'this_month', label: 'Este mes' },
+  { value: 'last_30', label: 'Últimos 30 días' },
+];
+
 export function HelpdeskToolbar({
   search,
   onSearchChange,
@@ -96,6 +118,10 @@ export function HelpdeskToolbar({
   onTicketFilterChange,
   priorityFilter,
   onPriorityFilterChange,
+  statusFilter,
+  onStatusFilterChange,
+  dateFilter,
+  onDateFilterChange,
   viewMode,
   onViewModeChange,
   totalCount,
@@ -103,12 +129,22 @@ export function HelpdeskToolbar({
   onExport,
   showTicketFilter = true,
 }: HelpdeskToolbarProps) {
-  const hasActiveFilters = (showTicketFilter && ticketFilter !== 'all') || priorityFilter !== 'all' || search.length > 0;
+  const activeFilterCount = [
+    showTicketFilter && ticketFilter !== 'all',
+    priorityFilter !== 'all',
+    statusFilter !== 'all',
+    dateFilter !== 'all',
+    search.length > 0,
+  ].filter(Boolean).length;
+
+  const hasActiveFilters = activeFilterCount > 0;
 
   const clearAllFilters = () => {
     onSearchChange('');
     onTicketFilterChange('all');
     onPriorityFilterChange('all');
+    onStatusFilterChange('all');
+    onDateFilterChange('all');
   };
 
   return (
@@ -163,6 +199,8 @@ export function HelpdeskToolbar({
           </Tooltip>
         </TooltipProvider>
 
+        <Separator orientation="vertical" className="h-6" />
+
         {/* Ticket filter pills */}
         {showTicketFilter && (
           <div className="flex items-center rounded-lg border bg-muted/40 p-0.5">
@@ -183,7 +221,7 @@ export function HelpdeskToolbar({
           </div>
         )}
 
-        {/* Priority filter dropdown */}
+        {/* Priority filter */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -227,6 +265,74 @@ export function HelpdeskToolbar({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Status filter */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                'gap-2',
+                statusFilter !== 'all' && 'border-primary/50 bg-primary/5',
+              )}
+            >
+              <CheckSquare className="size-3.5" />
+              Estado
+              {statusFilter !== 'all' && (
+                <Badge
+                  variant="secondary"
+                  className="ml-0.5 size-4 justify-center rounded-full p-0 text-[9px]"
+                >
+                  1
+                </Badge>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-52">
+            <DropdownMenuLabel className="text-xs">Filtrar por estado</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {STATUS_OPTIONS.map((option) => (
+              <DropdownMenuCheckboxItem
+                key={option.value}
+                checked={statusFilter === option.value}
+                onCheckedChange={() => onStatusFilterChange(option.value)}
+                className="gap-2"
+              >
+                {option.color && (
+                  <span
+                    className="size-2.5 rounded-full"
+                    style={{ backgroundColor: option.color }}
+                  />
+                )}
+                {option.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Date filter */}
+        <Select
+          value={dateFilter}
+          onValueChange={(v) => onDateFilterChange(v as DateFilter)}
+        >
+          <SelectTrigger
+            className={cn(
+              'w-44 gap-2',
+              dateFilter !== 'all' && 'border-primary/50 bg-primary/5',
+            )}
+          >
+            <Calendar className="size-3.5 shrink-0 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {DATE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <div className="flex-1" />
 
@@ -276,7 +382,9 @@ export function HelpdeskToolbar({
       {hasActiveFilters && (
         <div className="flex flex-wrap items-center gap-2">
           <SlidersHorizontal className="size-3.5 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Filtros:</span>
+          <span className="text-xs text-muted-foreground">
+            {activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''} activo{activeFilterCount > 1 ? 's' : ''}:
+          </span>
 
           {search && (
             <Badge variant="secondary" className="gap-1 pr-1 text-xs font-normal">
@@ -313,6 +421,37 @@ export function HelpdeskToolbar({
               Prioridad: {PRIORITY_OPTIONS.find((o) => o.value === priorityFilter)?.label}
               <button
                 onClick={() => onPriorityFilterChange('all')}
+                className="ml-0.5 rounded-sm hover:bg-muted"
+              >
+                <X className="size-3" />
+              </button>
+            </Badge>
+          )}
+
+          {statusFilter !== 'all' && (
+            <Badge variant="secondary" className="gap-1 pr-1 text-xs font-normal">
+              <span
+                className="size-2 rounded-full"
+                style={{
+                  backgroundColor: STATUS_OPTIONS.find((o) => o.value === statusFilter)?.color,
+                }}
+              />
+              Estado: {STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label}
+              <button
+                onClick={() => onStatusFilterChange('all')}
+                className="ml-0.5 rounded-sm hover:bg-muted"
+              >
+                <X className="size-3" />
+              </button>
+            </Badge>
+          )}
+
+          {dateFilter !== 'all' && (
+            <Badge variant="secondary" className="gap-1 pr-1 text-xs font-normal">
+              <Calendar className="size-3" />
+              {DATE_OPTIONS.find((o) => o.value === dateFilter)?.label}
+              <button
+                onClick={() => onDateFilterChange('all')}
                 className="ml-0.5 rounded-sm hover:bg-muted"
               >
                 <X className="size-3" />
